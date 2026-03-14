@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ═══════════════════════════════════════════
+       PARENT — Spring Boot 3.2.3 (Java 17 LTS)
+       ═══════════════════════════════════════════ -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.2.3</version>
+    <relativePath/>
+  </parent>
+
+  <!-- ═══════════════════════════════════════════
+       PROJECT COORDINATES
+       ═══════════════════════════════════════════ -->
+  <groupId>com.ellh</groupId>
+  <artifactId>ellh-backend</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <name>ellh-backend</name>
+  <description>Ethiopian Language Learning Hub — Spring Boot Backend API</description>
+
+  <!-- ═══════════════════════════════════════════
+       PROPERTIES
+       ═══════════════════════════════════════════ -->
+  <properties>
+    <java.version>17</java.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- Dependency versions not managed by Spring Boot parent -->
+    <jjwt.version>0.12.5</jjwt.version>
+    <firebase.version>9.3.0</firebase.version>
+    <okhttp.version>4.12.0</okhttp.version>
+    <testcontainers.version>1.19.7</testcontainers.version>
+    <jacoco.version>0.8.11</jacoco.version>
+    <mapstruct.version>1.5.5.Final</mapstruct.version>
+  </properties>
+
+  <!-- ═══════════════════════════════════════════
+       DEPENDENCY MANAGEMENT (BOM imports)
+       ═══════════════════════════════════════════ -->
+  <dependencyManagement>
+    <dependencies>
+      <!-- Testcontainers BOM — manages all TC module versions consistently -->
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <!-- ═══════════════════════════════════════════
+       DEPENDENCIES
+       ═══════════════════════════════════════════ -->
+  <dependencies>
+
+    <!-- ─────────────────────────────────────────
+         1. CORE WEB
+         SS-2: REST API layer (/api/v1/...)
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <!-- Includes: spring-web, spring-webmvc, jackson-databind,
+           tomcat-embed-core, tomcat-embed-websocket -->
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         2. SECURITY + JWT
+         SS-2: Spring Security (RBAC, CORS, rate limiting)
+         JWT: HMAC-SHA256, 24hr access / 30-day refresh
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+
+    <!-- JJWT — JWT creation and validation -->
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-api</artifactId>
+      <version>${jjwt.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-impl</artifactId>
+      <version>${jjwt.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-jackson</artifactId>
+      <version>${jjwt.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         3. POSTGRESQL + JPA + FLYWAY
+         SS-3: Structured Data Management
+         14 tables, 15 indexes, STI for User hierarchy
+         Flyway: versioned migrations V1__..V15__
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+      <!-- Includes: hibernate-core, spring-data-jpa, HikariCP -->
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+      <!-- JDBC driver for Supabase PostgreSQL 15 -->
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+      <!-- Runs migrations automatically on startup.
+           Migrations in: src/main/resources/db/migration/
+           Naming: V1__create_users.sql ... V15__create_indexes.sql -->
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         4. MONGODB
+         SS-4: Flexible Content and AI Data
+         5 collections: lesson_content, vocabulary_sets,
+         contrastive_rules, ai_service_logs (90-day TTL),
+         content_update_logs
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-mongodb</artifactId>
+      <!-- Includes: spring-data-mongodb, mongodb-driver-sync -->
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         5. REDIS
+         SS-7: Cache and Performance
+         Sessions (24hr TTL), lesson content (7-day TTL),
+         AI results (30-day TTL), idempotency keys (48hr TTL)
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+      <!-- Includes: spring-data-redis, lettuce-core -->
+    </dependency>
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+      <!-- Lettuce: async Redis client with TLS support.
+           Required for rediss:// (TLS) connection to Redis Cloud.
+           Jedis does not support TLS without additional config. -->
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         6. INPUT VALIDATION
+         @Valid on all request bodies
+         Custom validators: ISO 639-3 codes, CEFR levels
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+      <!-- Includes: hibernate-validator, jakarta.validation-api -->
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         7. ACTUATOR
+         GET /actuator/health — Render.com health checks
+         Shows: db (PostgreSQL), mongo, redis, diskSpace
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         8. LOMBOK
+         Reduces boilerplate: @Data, @Builder,
+         @NoArgsConstructor, @RequiredArgsConstructor
+         on all entity and DTO classes
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         9. MAPSTRUCT
+         Entity ↔ DTO mapping without manual code.
+         Used in: UserMapper, LessonMapper, ProgressMapper
+         Must be declared AFTER Lombok in processor order.
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
+      <version>${mapstruct.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct-processor</artifactId>
+      <version>${mapstruct.version}</version>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         10. FIREBASE ADMIN SDK
+         SS-2 NotificationService: FCM push notifications
+         Achievement unlocks, streak reminders
+         Sprint 8. Included now to avoid pom.xml changes later.
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>com.google.firebase</groupId>
+      <artifactId>firebase-admin</artifactId>
+      <version>${firebase.version}</version>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         11. OKHTTP3
+         SS-5: AI Service Gateway HTTP calls
+         Calls to Colab/Ngrok (ND-06, ND-07) and
+         Hugging Face Inference API (ND-08)
+         5-second timeout enforced per Section 4.5.4.4
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp</artifactId>
+      <version>${okhttp.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>logging-interceptor</artifactId>
+      <version>${okhttp.version}</version>
+      <!-- Logs AI gateway request/response in dev — disabled in prod profile -->
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         12. JACKSON EXTRAS
+         JSONB field deserialization (criteria_value,
+         options, prerequisites in PostgreSQL tables)
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <!-- Java 8+ date/time types (LocalDate, Instant, ZonedDateTime) -->
+    </dependency>
+
+    <!-- ═══════════════════════════════════════════
+         TEST DEPENDENCIES
+         ═══════════════════════════════════════════ -->
+
+    <!-- ─────────────────────────────────────────
+         13. SPRING BOOT TEST
+         @SpringBootTest, MockMvc, TestRestTemplate,
+         @MockBean, @DataJpaTest, @DataMongoTest
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+      <!-- Includes: JUnit 5, AssertJ, Mockito, Hamcrest,
+           JSONassert, JsonPath, spring-test -->
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         14. SPRING SECURITY TEST
+         @WithMockUser, SecurityMockMvcRequestPostProcessors
+         for testing secured endpoints
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         15. TESTCONTAINERS — Core + JUnit 5
+         AbstractIntegrationTest base class
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         16. TESTCONTAINERS — PostgreSQL
+         Spins up postgres:15 container for integration tests
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         17. TESTCONTAINERS — MongoDB
+         Spins up mongo:7 container for SS-4 integration tests
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mongodb</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- ─────────────────────────────────────────
+         18. H2 (in-memory DB for @DataJpaTest slices)
+         Used ONLY in @DataJpaTest slice tests where
+         full Testcontainers is overkill.
+         NOT used for @SpringBootTest integration tests
+         (those use Testcontainers PostgreSQL).
+         ───────────────────────────────────────── -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <!-- ═══════════════════════════════════════════
+       BUILD PLUGINS
+       ═══════════════════════════════════════════ -->
+  <build>
+    <plugins>
+
+      <!-- ─────────────────────────────────────────
+           1. SPRING BOOT MAVEN PLUGIN
+           Builds the executable fat JAR:
+           target/ellh-backend-0.0.1-SNAPSHOT.jar
+           Referenced in Dockerfile COPY and ENTRYPOINT
+           ───────────────────────────────────────── -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+            </exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+
+      <!-- ─────────────────────────────────────────
+           2. MAVEN COMPILER PLUGIN
+           Explicit Java 17. Annotation processors:
+           Lombok must be listed BEFORE MapStruct
+           so Lombok generates getters/setters before
+           MapStruct reads them.
+           ───────────────────────────────────────── -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>17</source>
+          <target>17</target>
+          <annotationProcessorPaths>
+            <!-- ORDER MATTERS: Lombok before MapStruct -->
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+            <path>
+              <groupId>org.mapstruct</groupId>
+              <artifactId>mapstruct-processor</artifactId>
+              <version>${mapstruct.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+
+      <!-- ─────────────────────────────────────────
+           3. MAVEN SUREFIRE PLUGIN
+           Runs unit tests: **/*Test.java
+           Triggered by: mvn test
+           ───────────────────────────────────────── -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+          </includes>
+          <excludes>
+            <!-- Exclude integration tests from unit test run -->
+            <exclude>**/*IT.java</exclude>
+          </excludes>
+          <systemPropertyVariables>
+            <spring.profiles.active>test</spring.profiles.active>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+
+      <!-- ─────────────────────────────────────────
+           4. MAVEN FAILSAFE PLUGIN
+           Runs integration tests: **/*IT.java
+           Triggered by: mvn verify (after package phase)
+           These tests use Testcontainers — they start
+           real DB containers. Slower than unit tests.
+           ───────────────────────────────────────── -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <includes>
+            <include>**/*IT.java</include>
+          </includes>
+          <systemPropertyVariables>
+            <spring.profiles.active>test</spring.profiles.active>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+
+      <!-- ─────────────────────────────────────────
+           5. JACOCO — Code Coverage
+           NFR-15: minimum 70% line coverage on
+           all service classes.
+           CI gate: mvn jacoco:check fails build
+           if coverage drops below 70%.
+           ───────────────────────────────────────── -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+
+          <!-- Attach JaCoCo agent before tests run -->
+          <execution>
+            <id>prepare-agent</id>
+            <goals><goal>prepare-agent</goal></goals>
+          </execution>
+
+          <!-- Generate HTML/XML report after tests -->
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals><goal>report</goal></goals>
+          </execution>
+
+          <!-- Enforce 70% coverage gate — fails build if not met -->
+          <execution>
+            <id>check</id>
+            <phase>verify</phase>
+            <goals><goal>check</goal></goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.70</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+              <!-- Exclude classes that don't need coverage:
+                   - config/      Spring @Configuration classes (wiring only)
+                   - entity/      JPA @Entity classes (getters/setters via Lombok)
+                   - dto/         Data transfer objects (no logic)
+                   - exception/   Custom exception classes (no logic)
+                   - EllhApplication  main() method -->
+              <excludes>
+                <exclude>com/ellh/config/**</exclude>
+                <exclude>com/ellh/**/entity/**</exclude>
+                <exclude>com/ellh/**/dto/**</exclude>
+                <exclude>com/ellh/**/exception/**</exclude>
+                <exclude>com/ellh/EllhApplication.class</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+
+        </executions>
+      </plugin>
+
+      <!-- ─────────────────────────────────────────
+           6. FLYWAY MAVEN PLUGIN
+           Allows running migrations manually:
+             mvn flyway:migrate   (apply pending)
+             mvn flyway:info      (show migration status)
+             mvn flyway:validate  (check applied vs available)
+           Useful for local dev and CI pre-checks.
+           Production migrations run automatically
+           on Spring Boot startup.
+           ───────────────────────────────────────── -->
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <configuration>
+          <!-- Values injected from Maven settings or env — not hardcoded -->
+          <url>${env.DATABASE_URL}</url>
+          <user>${env.DB_USERNAME}</user>
+          <password>${env.DB_PASSWORD}</password>
+          <locations>
+            <location>classpath:db/migration</location>
+          </locations>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+
+</project>

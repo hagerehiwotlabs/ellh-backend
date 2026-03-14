@@ -1,0 +1,2 @@
+-- TODO: Implement — see Chapter 4, Section 4.5.2.2 and 4.5.2.3
+-- Migration: V3__create_diagnostic_assessments.sql

@@ -1,0 +1,13 @@
+target/
+.git/
+.github/
+*.md
+*.txt
+.DS_Store
+*.iml
+.idea/
+.vscode/
+application-dev.properties
+application-local.properties
+*.env
+src/test/
