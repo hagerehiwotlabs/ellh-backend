@@ -18,16 +18,16 @@ public abstract class AbstractIntegrationTest {
             .withDatabaseName("ellh_test")
             .withUsername("ellh_user")
             .withPassword("test_password")
-            .withReuse(true);
+            .withReuse(Boolean.parseBoolean(System.getenv("TESTCONTAINERS_REUSE")));
 
     static final MongoDBContainer MONGODB =
         new MongoDBContainer(DockerImageName.parse("mongo:7"))
-            .withReuse(true);
+            .withReuse(Boolean.parseBoolean(System.getenv("TESTCONTAINERS_REUSE")));
 
     static final GenericContainer<?> REDIS =
         new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379)
-            .withReuse(true);
+            .withReuse(Boolean.parseBoolean(System.getenv("TESTCONTAINERS_REUSE")));
 
     static {
         POSTGRES.start();

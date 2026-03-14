@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin', cache: maven }
       - name: Run tests and verify
-        run: mvn verify -B
+        run: mvn verify -B -e
         env:
           SPRING_PROFILES_ACTIVE: test
           JWT_SECRET: test_jwt_secret_minimum_32_chars_long_for_hmac
