@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: ellh-postgres
+    environment:
+      POSTGRES_DB: ellh_dev
+      POSTGRES_USER: ellh_user
+      POSTGRES_PASSWORD: ellh_dev_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'ellh_user', '-d', 'ellh_dev']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ellh-redis
+    command: redis-server --requirepass ellh_redis_password
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'ellh_redis_password', 'PING']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Note: MongoDB is NOT included in Docker Compose.
+  # MongoDB Atlas M0 is used for both local dev and production.
+  # Reason: MongoDB Atlas is always free and the M0 cluster tolerates dev traffic.
+  # Add your local machine's IP to the Atlas Network Access List (Section 1.4 Step 3).
+
+volumes:
+  postgres_data:
