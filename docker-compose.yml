@@ -6,8 +6,9 @@ services:
       POSTGRES_DB: ellh_dev
       POSTGRES_USER: ellh_user
       POSTGRES_PASSWORD: ellh_dev_password
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +22,7 @@ services:
     container_name: ellh-redis
     command: redis-server --requirepass ellh_redis_password
     ports:
-      - '6379:6379'
+      - '6380:6379'
     healthcheck:
       test: ['CMD', 'redis-cli', '-a', 'ellh_redis_password', 'PING']
       interval: 10s
