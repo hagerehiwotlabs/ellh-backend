@@ -1,5 +1,6 @@
 package com.ellh.feedback.entity;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public enum FeedbackStatus  {
+/** Section 4.5.2.2 — feedback_reports.status column lifecycle. */
+public enum FeedbackStatus {
+    OPEN, IN_REVIEW, RESOLVED, DISMISSED
 }

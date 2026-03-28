@@ -1,5 +1,9 @@
 package com.ellh.feedback.entity;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public enum FeedbackSeverity  {
+/**
+ * Section 4.5.2.2 — feedback_reports.severity column.
+ * HIGH is automatically set for AI and sync failure reports created by FeedbackReporter.
+ */
+public enum FeedbackSeverity {
+    LOW, MEDIUM, HIGH
 }

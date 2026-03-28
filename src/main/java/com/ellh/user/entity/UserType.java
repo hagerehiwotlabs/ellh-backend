@@ -1,5 +1,13 @@
 package com.ellh.user.entity;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public enum UserType  {
+/**
+ * STI discriminator values for the users table.
+ * Section 4.5.2.1 — Single Table Inheritance strategy.
+ * user_type column CHECK constraint enforces these four values.
+ */
+public enum UserType {
+    FOREIGN_LEARNER,
+    BILINGUAL_LEARNER,
+    CONTENT_ADMIN,
+    SYSTEM_ADMIN
 }

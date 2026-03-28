@@ -1,5 +1,9 @@
 package com.ellh.user.entity;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public enum CefrLevel  {
+/**
+ * CEFR proficiency levels supported by ELLH (A1–B1 per Section 1.3.2).
+ * Used in LearnerProfile.currentCefrLevel and Lesson.cefrLevel.
+ */
+public enum CefrLevel {
+    A1, A2, B1
 }

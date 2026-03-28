@@ -1,5 +1,7 @@
 package com.ellh.feedback.entity;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public enum TargetType  {
+/** Section 4.5.2.2 — feedback_reports.target_type column. */
+public enum TargetType {
+    LESSON, EXERCISE, TRANSLATION, PRONUNCIATION,
+    AI_SERVICE, SYNC, APP_GENERAL
 }
