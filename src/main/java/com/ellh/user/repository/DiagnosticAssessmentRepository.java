@@ -1,5 +1,15 @@
 package com.ellh.user.repository;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public interface DiagnosticAssessmentRepository  {
+import com.ellh.user.entity.DiagnosticAssessment;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface DiagnosticAssessmentRepository extends JpaRepository<DiagnosticAssessment, Long> {
+
+    Optional<DiagnosticAssessment> findByUserId(Long userId);
+
+    boolean existsByUserId(Long userId);
 }
