@@ -1,18 +1,22 @@
--- V4__create_diagnostic_assessments.sql
-CREATE TABLE diagnostic_assessments (
-    id                       BIGSERIAL   PRIMARY KEY,
-    user_id                  BIGINT      NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    responses                JSONB       NOT NULL,
-    assigned_pathway         VARCHAR(20) NOT NULL
-        CHECK (assigned_pathway IN ('FOREIGN_LEARNER','BILINGUAL_LEARNER')),
-    assigned_cefr_level      VARCHAR(5)  NOT NULL
-        CHECK (assigned_cefr_level IN ('A1','A2','B1')),
-    total_score              INTEGER     NOT NULL
-        CHECK (total_score >= 0 AND total_score <= 100),
-    language_knowledge_flags JSONB,
-    completed_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- V4: user_consent — GDPR consent audit trail
+-- Section 4.5.2.2 — user_consent table specification
+-- Section 4.5.2.7 — retained for 7 years even after account deletion
+
+CREATE TABLE user_consent (
+    id              BIGSERIAL       PRIMARY KEY,
+    user_id         BIGINT          NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    consent_type    VARCHAR(50)     NOT NULL
+                        CHECK (consent_type IN (
+                            'PRIVACY_POLICY', 'DATA_COLLECTION',
+                            'AUDIO_RECORDING', 'RESEARCH_USE'
+                        )),
+    policy_version  VARCHAR(20)     NOT NULL,
+    granted_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    revoked_at      TIMESTAMPTZ,
+    ip_address      INET            NOT NULL,
+    UNIQUE (user_id, consent_type, policy_version)
 );
 
-COMMENT ON COLUMN diagnostic_assessments.responses IS
-  'Array of {questionId, answer, correct} — serialised from DiagnosticAssessmentFragment.';
-
+-- ON DELETE RESTRICT: user_consent rows must be retained even after
+-- account deletion (7-year legal hold per Section 4.5.2.7)
+COMMENT ON TABLE user_consent IS '7-year legal hold: ON DELETE RESTRICT prevents CASCADE delete';
