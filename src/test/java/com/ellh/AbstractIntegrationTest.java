@@ -42,7 +42,7 @@ public abstract class AbstractIntegrationTest {
             .withPassword("test_password");
 
     static final MongoDBContainer MONGODB =
-        new MongoDBContainer(DockerImageName.parse("mongo:7"));
+        new MongoDBContainer(DockerImageName.parse("mongo:4.4"));
 
     static final GenericContainer<?> REDIS =
         new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))

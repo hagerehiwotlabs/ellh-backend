@@ -22,6 +22,7 @@
     <java.version>17</java.version>
     <jjwt.version>0.12.5</jjwt.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
+    <lombok.version>1.18.34</lombok.version>
     <testcontainers.version>1.19.7</testcontainers.version>
     <firebase.version>9.3.0</firebase.version>
     <okhttp.version>4.12.0</okhttp.version>
@@ -134,9 +135,15 @@
 
     <!-- ── OKHTTP (AI Gateway HTTP calls — Sprint 5) ───────────────── -->
     <dependency>
-      <groupId>com.squareup.okhttp3</groupId>
-      <artifactId>okhttp</artifactId>
-      <version>${okhttp.version}</version>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>${okhttp.version}</version>
+    </dependency>
+
+    <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>logging-interceptor</artifactId>
+        <version>${okhttp.version}</version>
     </dependency>
 
     <!-- ── BUCKET4J (rate limiting — Sprint 1 RateLimitFilter) ────── -->

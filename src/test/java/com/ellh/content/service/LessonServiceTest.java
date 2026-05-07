@@ -70,13 +70,14 @@ class LessonServiceTest {
         adminUser = User.builder().id(99L).email("admin@ellh.com")
                 .passwordHash("x").firstName("Admin").lastName("User").build();
 
-        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+     //   when(redisTemplate.opsForValue()).thenReturn(valueOps);
     }
 
     // ── getLesson — cache hit ─────────────────────────────────────────────────
 
     @Test
     void getLesson_cacheHit_returnsDeserialised() throws Exception {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
         LessonResponse expected = LessonResponse.builder().id(10L).title("Greetings").build();
         when(valueOps.get(anyString())).thenReturn("{\"id\":10}");
         when(objectMapper.readValue(anyString(), eq(LessonResponse.class))).thenReturn(expected);
@@ -91,6 +92,7 @@ class LessonServiceTest {
 
     @Test
     void getLesson_cacheMiss_fetchesFromDbAndCaches() throws Exception {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(valueOps.get(anyString())).thenReturn(null); // cache miss
         when(lessonRepository.findByIdAndActiveTrue(10L)).thenReturn(Optional.of(testLesson));
 
@@ -109,6 +111,7 @@ class LessonServiceTest {
 
     @Test
     void getLesson_notFound_throwsResourceNotFoundException() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(valueOps.get(anyString())).thenReturn(null);
         when(lessonRepository.findByIdAndActiveTrue(999L)).thenReturn(Optional.empty());
 
@@ -120,6 +123,7 @@ class LessonServiceTest {
 
     @Test
     void createLesson_bridgeSuccess_setsContentId() throws Exception {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(languageService.getEntityById(1L)).thenReturn(testLanguage);
         when(lessonRepository.save(any(Lesson.class))).thenReturn(testLesson);
 

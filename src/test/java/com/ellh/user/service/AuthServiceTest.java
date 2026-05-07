@@ -49,11 +49,11 @@ class AuthServiceTest {
     private static final Long   USER_ID     = 1L;
     private static final String ACCESS_TKN  = "access.token.value";
     private static final String REFRESH_TKN = "refresh.token.value";
+    private static final String TEST_USER_EMAIL = "test@test.com";
 
     @BeforeEach
     void setUpJwtMocks() {
-        when(jwtService.generateAccessToken(anyLong(), anyString())).thenReturn(ACCESS_TKN);
-        when(jwtService.generateRefreshToken(anyLong())).thenReturn(REFRESH_TKN);
+        // JWT stubs moved into individual tests that need them
     }
 
     // ── register ──────────────────────────────────────────────────────────────
@@ -63,9 +63,12 @@ class AuthServiceTest {
         when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
         when(passwordEncoder.encode(PASSWORD)).thenReturn("hashed_password");
 
+        when(jwtService.generateAccessToken(anyLong(), anyString(), anyString())).thenReturn(ACCESS_TKN);
+        when(jwtService.generateRefreshToken(anyLong(), anyString())).thenReturn(REFRESH_TKN);
+
         User savedUser = User.builder()
                 .id(USER_ID).email(EMAIL).passwordHash("hashed_password")
-                .firstName("Abebe").lastName("Kebede").build();
+                .firstName("Abebe").lastName("Kebede").userType(UserType.FOREIGN_LEARNER).build();
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
         LearnerProfile savedProfile = LearnerProfile.builder()
@@ -111,8 +114,15 @@ class AuthServiceTest {
     void register_contentAdmin_doesNotCreateLearnerProfile() {
         when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("hashed");
+
+        when(jwtService.generateAccessToken(anyLong(), anyString(), anyString())).thenReturn(ACCESS_TKN);
+        when(jwtService.generateRefreshToken(anyLong(), anyString())).thenReturn(REFRESH_TKN);
+
         User admin = User.builder().id(USER_ID).email(EMAIL).passwordHash("hashed")
-                .firstName("Admin").lastName("User").build();
+                .firstName("Admin").lastName("User")
+                .userType(UserType.CONTENT_ADMIN)
+                .build();
+
         when(userRepository.save(any())).thenReturn(admin);
 
         RegisterRequest request = new RegisterRequest();
@@ -139,6 +149,9 @@ class AuthServiceTest {
                 .build();
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
+        when(jwtService.generateAccessToken(anyLong(), anyString(), anyString())).thenReturn(ACCESS_TKN);
+        when(jwtService.generateRefreshToken(anyLong(), anyString())).thenReturn(REFRESH_TKN);
+
         LearnerProfile profile = LearnerProfile.builder()
                 .user(user).onboardingComplete(false).pathwayType(PathwayType.FOREIGN_LEARNER).build();
         when(learnerProfileRepository.findByUserId(USER_ID)).thenReturn(Optional.of(profile));
@@ -161,7 +174,8 @@ class AuthServiceTest {
                 .thenThrow(new BadCredentialsException("bad creds"));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(
                 User.builder().id(USER_ID).email(EMAIL).passwordHash("x")
-                        .firstName("A").lastName("B").build()));
+                        .firstName("A").lastName("B").userType(UserType.FOREIGN_LEARNER)
+                        .build()));
 
         LoginRequest request = new LoginRequest();
         request.setEmail(EMAIL);
@@ -187,8 +201,11 @@ class AuthServiceTest {
                 .userType(UserType.FOREIGN_LEARNER)
                 .accountStatus(AccountStatus.ACTIVE)
                 .build();
+ 
+        when(jwtService.generateAccessToken(anyLong(), anyString(), anyString())).thenReturn(ACCESS_TKN);       
+
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
-        when(learnerProfileRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+                        when(learnerProfileRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken(REFRESH_TKN);

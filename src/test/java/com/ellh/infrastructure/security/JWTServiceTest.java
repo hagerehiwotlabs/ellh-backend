@@ -19,6 +19,7 @@ class JWTServiceTest {
             "test_jwt_secret_minimum_32_chars_long_for_hmac_sha256";
     private static final Long TEST_USER_ID = 42L;
     private static final String TEST_USER_TYPE = "FOREIGN_LEARNER";
+    private static final String TEST_USER_EMAIL = "test@test.com";
 
     @BeforeEach
     void setUp() {
@@ -29,19 +30,19 @@ class JWTServiceTest {
 
     @Test
     void generateAccessToken_returnsNonNullToken() {
-        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_TYPE);
+        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_TYPE);
         assertThat(token).isNotNull().isNotBlank();
     }
 
     @Test
     void generateAccessToken_extractsCorrectUserId() {
-        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_TYPE);
+        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_TYPE);
         assertThat(jwtService.extractUserId(token)).isEqualTo(TEST_USER_ID.toString());
     }
 
     @Test
     void generateAccessToken_extractsCorrectUserType() {
-        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_TYPE);
+        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_TYPE);
         assertThat(jwtService.extractUserType(token)).isEqualTo(TEST_USER_TYPE);
     }
 
@@ -49,19 +50,19 @@ class JWTServiceTest {
 
     @Test
     void generateRefreshToken_isValidRefreshToken() {
-        String token = jwtService.generateRefreshToken(TEST_USER_ID);
+        String token = jwtService.generateRefreshToken(TEST_USER_ID, TEST_USER_EMAIL);
         assertThat(jwtService.isRefreshTokenValid(token)).isTrue();
     }
 
     @Test
     void generateRefreshToken_extractsCorrectUserId() {
-        String token = jwtService.generateRefreshToken(TEST_USER_ID);
+        String token = jwtService.generateRefreshToken(TEST_USER_ID, TEST_USER_EMAIL);
         assertThat(jwtService.extractUserId(token)).isEqualTo(TEST_USER_ID.toString());
     }
 
     @Test
     void generateAccessToken_isNotValidAsRefreshToken() {
-        String accessToken = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_TYPE);
+        String accessToken = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_TYPE);
         // An access token must not pass the refresh token validator (wrong tokenType claim)
         assertThat(jwtService.isRefreshTokenValid(accessToken)).isFalse();
     }
@@ -70,7 +71,7 @@ class JWTServiceTest {
 
     @Test
     void isTokenValid_returnsTrueForValidToken() {
-        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_TYPE);
+        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_TYPE);
         com.ellh.user.entity.User mockUser = com.ellh.user.entity.User.builder()
                 .id(TEST_USER_ID)
                 .email("test@ellh.com")
@@ -83,7 +84,7 @@ class JWTServiceTest {
 
     @Test
     void isTokenValid_returnsFalseForWrongUserId() {
-        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_TYPE);
+        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_TYPE);
         com.ellh.user.entity.User differentUser = com.ellh.user.entity.User.builder()
                 .id(999L) // different ID
                 .email("other@ellh.com")
@@ -96,7 +97,7 @@ class JWTServiceTest {
 
     @Test
     void isTokenValid_returnsFalseForTamperedToken() {
-        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_TYPE);
+        String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_TYPE);
         String tampered = token.substring(0, token.length() - 4) + "XXXX";
         com.ellh.user.entity.User user = com.ellh.user.entity.User.builder()
                 .id(TEST_USER_ID).email("t@t.com").passwordHash("x")
