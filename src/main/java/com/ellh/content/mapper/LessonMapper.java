@@ -46,7 +46,6 @@ public interface LessonMapper {
 
     // ── LessonContent (MongoDB → DTO) ─────────────────────────────────────────
 
-    @Mapping(source = "active", target = "active", ignore = true)
     LessonContentDto toLessonContentDto(LessonContent content);
 
     // ── Exercise ──────────────────────────────────────────────────────────────

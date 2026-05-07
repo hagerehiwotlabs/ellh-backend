@@ -2,7 +2,7 @@ package com.ellh.content.service;
 
 import com.ellh.content.document.LessonContent;
 import com.ellh.content.dto.*;
-import com.ellh.content.entity.CefrLevel;
+import com.ellh.user.entity.CefrLevel;
 import com.ellh.content.entity.*;
 import com.ellh.content.mapper.LessonMapper;
 import com.ellh.content.repository.LessonContentRepository;
@@ -87,27 +87,29 @@ public class LessonService {
         LessonResponse response = lessonMapper.toLessonResponse(lesson);
 
         // 3. Fetch MongoDB content if content_id bridge is set
+       
         if (lesson.getContentId() != null) {
-            lessonContentRepository.findById(lesson.getContentId())
-                    .ifPresent(content -> {
-                        response = LessonResponse.builder()
-                                .id(response.getId())
-                                .languageId(response.getLanguageId())
-                                .languageCode(response.getLanguageCode())
-                                .title(response.getTitle())
-                                .description(response.getDescription())
-                                .cefrLevel(response.getCefrLevel())
-                                .orderIndex(response.getOrderIndex())
-                                .xpReward(response.getXpReward())
-                                .contentId(response.getContentId())
-                                .prerequisites(response.getPrerequisites())
-                                .estimatedMinutes(response.getEstimatedMinutes())
-                                .versionStamp(content.getVersionStamp())
-                                .content(lessonMapper.toLessonContentDto(content))
-                                .createdAt(response.getCreatedAt())
-                                .updatedAt(response.getUpdatedAt())
-                                .build();
-                    });
+            Optional<LessonContent> contentOpt = lessonContentRepository.findById(lesson.getContentId());
+            if (contentOpt.isPresent()) {
+                LessonContent content = contentOpt.get();
+                response = LessonResponse.builder()
+                        .id(response.getId())
+                        .languageId(response.getLanguageId())
+                        .languageCode(response.getLanguageCode())
+                        .title(response.getTitle())
+                        .description(response.getDescription())
+                        .cefrLevel(response.getCefrLevel())
+                        .orderIndex(response.getOrderIndex())
+                        .xpReward(response.getXpReward())
+                        .contentId(response.getContentId())
+                        .prerequisites(response.getPrerequisites())
+                        .estimatedMinutes(response.getEstimatedMinutes())
+                        .versionStamp(content.getVersionStamp())
+                        .content(lessonMapper.toLessonContentDto(content))
+                        .createdAt(response.getCreatedAt())
+                        .updatedAt(response.getUpdatedAt())
+                        .build();
+            }
         }
 
         // 4. Cache the full response (7-day TTL)
