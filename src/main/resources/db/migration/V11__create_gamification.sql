@@ -43,3 +43,23 @@ CREATE TABLE user_achievements (
     is_completed    BOOLEAN         NOT NULL DEFAULT TRUE,
     UNIQUE (user_id, achievement_id)
 );
+
+-- Seed 5 starter achievements
+INSERT INTO achievements (name, description, xp_reward, criteria_type, criteria_value)
+VALUES
+  ('First Step',
+   'Complete your first lesson',
+   100, 'LESSON_COMPLETE', '{"count": 1}'),
+  ('Week Warrior',
+   'Maintain a 7-day learning streak',
+   200, 'STREAK_DAYS', '{"count": 7}'),
+  ('Century Club',
+   'Earn 100 XP total',
+   50,  'XP_TOTAL', '{"threshold": 100}'),
+  ('Perfect Score',
+   'Score 100% on any exercise',
+   75,  'EXERCISE_SCORE', '{"score": 100}'),
+  ('Language Explorer',
+   'Start learning a second language',
+   150, 'LESSON_COMPLETE', '{"count": 1, "unique_languages": 2}');
+

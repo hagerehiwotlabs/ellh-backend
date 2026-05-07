@@ -13,7 +13,7 @@ CREATE TABLE user_consent (
     policy_version  VARCHAR(20)     NOT NULL,
     granted_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     revoked_at      TIMESTAMPTZ,
-    ip_address      INET            NOT NULL,
+    ip_address      VARCHAR(45)     NOT NULL,
     UNIQUE (user_id, consent_type, policy_version)
 );
 
