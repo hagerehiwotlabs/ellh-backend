@@ -7,6 +7,9 @@ import lombok.Getter;
 /** Response DTO for GET /api/v1/languages. */
 @Getter
 @Builder
+@NoArgsConstructor 
+@AllArgsConstructor
+
 public class LanguageResponse {
     private Long id;
     private String name;
