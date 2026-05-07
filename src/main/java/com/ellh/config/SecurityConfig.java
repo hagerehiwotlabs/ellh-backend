@@ -21,6 +21,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Spring Security configuration for the ELLH API.
@@ -40,6 +43,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
     private final JWTAuthFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitFilter;   // ← injected by Spring; class is RateLimitFilter
     private final UserDetailsService userDetailsService;
@@ -74,6 +78,8 @@ public class SecurityConfig {
                     "/actuator/health",
                     "/actuator/info"
                 ).permitAll()
+
+                .requestMatchers("/api/v1/languages/**").authenticated()
 
                 // ContentAdmin + SystemAdmin only
                 .requestMatchers(HttpMethod.POST,   "/api/v1/lessons/**").hasAnyRole(
@@ -118,7 +124,9 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         // BCrypt with strength 12 — secure default for 2024 hardware
-        return new BCryptPasswordEncoder(12);
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+        log.info("PasswordEncoder bean created: {}", encoder.getClass().getSimpleName());
+        return encoder;
     }
 
     @Bean

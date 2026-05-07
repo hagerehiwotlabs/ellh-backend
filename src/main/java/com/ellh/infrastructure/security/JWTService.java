@@ -1,6 +1,7 @@
 package com.ellh.infrastructure.security;
 
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,10 +55,11 @@ public class JWTService {
      * Mints a 24-hour access token containing the userId and userType claims.
      * Used by AuthController on login and token refresh.
      */
-    public String generateAccessToken(Long userId, String userType) {
+    public String generateAccessToken(Long userId, String email, String userType) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .subject(userId.toString())
+                .subject(email)                 // ← use email, not userId
+                .claim("userId", userId)        // still include userId as custom claim
                 .claim("userType", userType)
                 .claim("tokenType", "ACCESS")
                 .issuedAt(Date.from(now))
@@ -70,10 +72,11 @@ public class JWTService {
      * Mints a 30-day refresh token. Contains only userId — no role claim.
      * Stored encrypted on the Android device via EncryptedSharedPreferences.
      */
-    public String generateRefreshToken(Long userId) {
+    public String generateRefreshToken(Long userId, String email) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .subject(userId.toString())
+                .subject(email)
+                .claim("userId", userId)
                 .claim("tokenType", "REFRESH")
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(refreshTokenExpiryDays, ChronoUnit.DAYS)))
@@ -86,9 +89,8 @@ public class JWTService {
     /** Returns true if the token signature is valid and it has not expired. */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         try {
-            final String userId = extractUserId(token);
-            return userId.equals(String.valueOf(
-                    ((com.ellh.user.entity.User) userDetails).getId()))
+            final String email = extractUsername(token);  // subject = email
+            return email.equals(userDetails.getUsername()) // user email (e.g., "ab@gmail.com")
                     && !isTokenExpired(token);
         } catch (JwtException | ClassCastException e) {
             log.debug("JWT validation failed: {}", e.getMessage());
@@ -114,6 +116,10 @@ public class JWTService {
         return extractClaim(token, Claims::getSubject);
     }
 
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
     public String extractUserType(String token) {
         return extractAllClaims(token).get("userType", String.class);
     }
@@ -132,5 +138,13 @@ public class JWTService {
 
     private boolean isTokenExpired(String token) {
         return extractClaim(token, Claims::getExpiration).before(new Date());
+    }
+
+    public String extractSubject(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public Long extractUserIdFromClaims(String token) {
+        return extractAllClaims(token).get("userId", Long.class);
     }
 }

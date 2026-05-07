@@ -45,34 +45,40 @@ public class JWTAuthFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
+        log.debug("Auth header: {}", authHeader);
 
-        // Pass through if no Bearer token present (public endpoints)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         final String jwt = authHeader.substring(7);
+        log.debug("JWT token: {}...", jwt.substring(0, Math.min(jwt.length(), 30)));
 
         try {
-            final String userId = jwtService.extractUserId(jwt);
+            final String userEmail = jwtService.extractUsername(jwt); // <-- make sure this method exists
+            log.info("Extracted email from token: {}", userEmail);
 
-            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
+                log.info("Loaded user: {}, authorities: {}", userDetails.getUsername(), userDetails.getAuthorities());
 
-                if (jwtService.isTokenValid(jwt, userDetails)) {
+                boolean isValid = jwtService.isTokenValid(jwt, userDetails);
+                log.info("isTokenValid result: {}", isValid);
+
+                if (isValid) {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request));
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    log.info("Authentication set for {}", userEmail);
+                } else {
+                    log.warn("JWT token INVALID for user {}", userEmail);
                 }
             }
         } catch (Exception e) {
-            // Log at DEBUG — do not expose JWT validation errors in the response
-            log.debug("JWT filter: could not authenticate request — {}", e.getMessage());
-            // Do not set authentication; the request continues as anonymous
+            log.error("JWT authentication error", e);
         }
 
         filterChain.doFilter(request, response);
