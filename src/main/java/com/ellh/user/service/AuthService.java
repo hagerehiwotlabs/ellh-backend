@@ -15,6 +15,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 import java.util.Optional;
 
@@ -33,6 +36,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private final UserRepository          userRepository;
     private final LearnerProfileRepository learnerProfileRepository;
     private final PasswordEncoder          passwordEncoder;
@@ -63,10 +67,14 @@ public class AuthService {
                 .lastName(request.getLastName())
                 .accountStatus(AccountStatus.ACTIVE) // skip email verification for v1.0
                 .authProvider(AuthProvider.LOCAL)
+                .userType(request.getUserType())
                 .build();
 
         User saved = userRepository.save(user);
         log.info("User registered: id={} type={}", saved.getId(), request.getUserType());
+
+        log.info("Registration - email: {}, raw password: {}, encoded password: {}", 
+            request.getEmail(), request.getPassword(), saved.getPasswordHash());
 
         // Create LearnerProfile for learner accounts (ContentAdmin has no profile)
         boolean isLearner = request.getUserType() == UserType.FOREIGN_LEARNER
@@ -96,6 +104,11 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        // --- DEBUG START ---
+        log.info("Login attempt - email: {}, raw password: '{}'", request.getEmail(), request.getPassword());
+        userRepository.findByEmail(request.getEmail().toLowerCase())
+            .ifPresent(user -> log.info("Stored password hash for {}: {}", request.getEmail(), user.getPasswordHash()));
+        // --- DEBUG END ---
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -105,11 +118,21 @@ public class AuthService {
             // Increment the failed attempt counter
             userRepository.findByEmail(request.getEmail().toLowerCase())
                     .ifPresent(u -> userRepository.incrementFailedAttempts(u.getId()));
+            log.warn("BadCredentialsException for email: {}", request.getEmail());
             throw new UnauthorizedException("Invalid email or password");
         }
 
         User user = userRepository.findByEmail(request.getEmail().toLowerCase())
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
+
+        log.info("Login attempt - email: {}", request.getEmail());
+        log.info("Stored password hash: {}", user.getPasswordHash());
+        log.info("Raw password from request: {}", request.getPassword());
+        boolean matches = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
+        log.info("Password matches: {}", matches);
+        // Manual password match test
+        boolean manualMatch = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
+        log.info("Manual password match: {}", manualMatch);
 
         // Reset failed attempts and record login time
         userRepository.resetFailedAttempts(user.getId());
@@ -145,8 +168,8 @@ public class AuthService {
             throw new UnauthorizedException("Refresh token is invalid or expired");
         }
 
-        String userIdStr = jwtService.extractUserId(refreshToken);
-        User user = userRepository.findById(Long.parseLong(userIdStr))
+        String email = jwtService.extractSubject(refreshToken);  
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
         if (!user.isEnabled()) {
@@ -154,7 +177,7 @@ public class AuthService {
         }
 
         String newAccessToken = jwtService.generateAccessToken(
-                user.getId(), user.getUserType().name());
+                user.getId(), user.getEmail(), user.getUserType().name());
 
         // Extend Redis session TTL
         sessionCacheService.extendSession(user.getId());
@@ -171,7 +194,7 @@ public class AuthService {
 
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
-                .refreshToken(refreshToken) // unchanged
+                .refreshToken(refreshToken) 
                 .userId(user.getId())
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
@@ -185,8 +208,8 @@ public class AuthService {
 
     private AuthResponse buildAuthResponse(User user, boolean onboardingComplete) {
         String accessToken  = jwtService.generateAccessToken(
-                user.getId(), user.getUserType().name());
-        String refreshToken = jwtService.generateRefreshToken(user.getId());
+                user.getId(), user.getEmail(), user.getUserType().name());
+        String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail());
 
         // Store session in Redis (non-blocking; session loss on Redis outage is acceptable)
         sessionCacheService.createSession(user.getId(), accessToken.substring(0, 8));
