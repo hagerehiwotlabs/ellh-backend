@@ -36,7 +36,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private final UserRepository          userRepository;
     private final LearnerProfileRepository learnerProfileRepository;
     private final PasswordEncoder          passwordEncoder;
