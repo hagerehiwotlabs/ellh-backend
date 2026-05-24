@@ -19,7 +19,7 @@ class JWTServiceTest {
             "test_jwt_secret_minimum_32_chars_long_for_hmac_sha256";
     private static final Long TEST_USER_ID = 42L;
     private static final String TEST_USER_TYPE = "FOREIGN_LEARNER";
-    private static final String TEST_USER_EMAIL = "test@test.com";
+    private static final String TEST_USER_EMAIL = "test@ellh.com";
 
     @BeforeEach
     void setUp() {
@@ -35,9 +35,9 @@ class JWTServiceTest {
     }
 
     @Test
-    void generateAccessToken_extractsCorrectUserId() {
+    void generateAccessToken_extractsCorrectUsername() {
         String token = jwtService.generateAccessToken(TEST_USER_ID, TEST_USER_EMAIL, TEST_USER_TYPE);
-        assertThat(jwtService.extractUserId(token)).isEqualTo(TEST_USER_ID.toString());
+        assertThat(jwtService.extractUsername(token)).isEqualTo(TEST_USER_EMAIL);
     }
 
     @Test
@@ -55,9 +55,9 @@ class JWTServiceTest {
     }
 
     @Test
-    void generateRefreshToken_extractsCorrectUserId() {
+    void generateRefreshToken_extractsCorrectUsername() {
         String token = jwtService.generateRefreshToken(TEST_USER_ID, TEST_USER_EMAIL);
-        assertThat(jwtService.extractUserId(token)).isEqualTo(TEST_USER_ID.toString());
+        assertThat(jwtService.extractUsername(token)).isEqualTo(TEST_USER_EMAIL);
     }
 
     @Test

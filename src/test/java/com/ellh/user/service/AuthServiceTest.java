@@ -193,7 +193,7 @@ class AuthServiceTest {
     @Test
     void refresh_validToken_returnsNewAccessToken() {
         when(jwtService.isRefreshTokenValid(REFRESH_TKN)).thenReturn(true);
-        when(jwtService.extractUserId(REFRESH_TKN)).thenReturn(USER_ID.toString());
+        when(jwtService.extractSubject(REFRESH_TKN)).thenReturn(EMAIL);   // ← fix: use extractSubject + email
 
         User user = User.builder()
                 .id(USER_ID).email(EMAIL).passwordHash("h")
@@ -201,11 +201,10 @@ class AuthServiceTest {
                 .userType(UserType.FOREIGN_LEARNER)
                 .accountStatus(AccountStatus.ACTIVE)
                 .build();
- 
-        when(jwtService.generateAccessToken(anyLong(), anyString(), anyString())).thenReturn(ACCESS_TKN);       
 
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
-                        when(learnerProfileRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+        when(jwtService.generateAccessToken(anyLong(), anyString(), anyString())).thenReturn(ACCESS_TKN);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(learnerProfileRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken(REFRESH_TKN);
