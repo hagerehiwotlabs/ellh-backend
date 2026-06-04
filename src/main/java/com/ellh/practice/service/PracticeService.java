@@ -40,8 +40,9 @@ import java.util.stream.Collectors;
  *  - Practice modes cached in Redis (24-hour TTL)
  *  - Practice history cached (1-hour TTL)
  */
-@Slf4j
+
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional
 public class PracticeService {

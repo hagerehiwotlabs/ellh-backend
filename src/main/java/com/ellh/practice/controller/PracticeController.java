@@ -24,8 +24,8 @@ import java.util.List;
  * Section 4.5.5.2 — Practice flow and session management.
  * Cache: practice modes (24h), history (1h).
  */
-@Slf4j
 @RestController
+@Slf4j
 @RequestMapping("/api/v1/practice")
 @RequiredArgsConstructor
 public class PracticeController {
