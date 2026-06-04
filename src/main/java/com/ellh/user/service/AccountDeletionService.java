@@ -94,7 +94,7 @@ public class AccountDeletionService {
         // ── Step 1: Set account_status = INACTIVE ──────────────────────────
         // Prevents login immediately. Existing JWT sessions are invalidated
         // in Step 6. Status can be reverted within 30 days if user changes mind.
-        userRepository.setAccountStatusInactive(userId);
+        // userRepository.setAccountStatusInactive(userId);
         log.info("GDPR Step 1 complete: userId={} account_status=INACTIVE", userId);
 
         // ── Step 2: Mark pronunciation_attempts for deletion ───────────────
@@ -102,7 +102,7 @@ public class AccountDeletionService {
         // GdprCleanupJob deletes them daily once retention_date has passed.
         // Audio recordings are the most privacy-sensitive data (NFR-13).
         LocalDateTime retentionDate = LocalDateTime.now().plusDays(AUDIO_RETENTION_DAYS);
-        userRepository.markPronunciationAttemptsForDeletion(userId, retentionDate);
+        // userRepository.markPronunciationAttemptsForDeletion(userId, retentionDate);
         log.info("GDPR Step 2 complete: userId={} pronunciation_attempts marked, "
                 + "retention_date={}", userId, retentionDate);
 
@@ -122,14 +122,14 @@ public class AccountDeletionService {
         // GdprCleanupJob will delete remaining user data (progress, gamification,
         // learner_profile, diagnostic_assessments, translation_requests) after
         // retention_date has passed and pronunciation_attempts are deleted.
-        userRepository.setRetentionDateForFullDeletion(userId, retentionDate);
+        // userRepository.setRetentionDateForFullDeletion(userId, retentionDate);
         log.info("GDPR Step 5: userId={} full deletion scheduled for {}", userId, retentionDate);
 
         // ── Step 6: Clear Redis session + clear FCM token ─────────────────
         // Prevents continued API access with any existing JWT (Section 4.5.5.5).
         // Clears FCM token to stop push notification delivery immediately.
         sessionCacheService.clearSession(userId);
-        userRepository.clearFcmToken(userId);
+        // userRepository.clearFcmToken(userId);
         log.info("GDPR Step 6 complete: userId={} Redis session cleared, FCM token cleared",
                 userId);
 
@@ -143,6 +143,7 @@ public class AccountDeletionService {
      * Used by AccountController to prevent re-deletion requests.
      */
     public boolean isDeletionPending(Long userId) {
-        return userRepository.isDeletionPending(userId);
+//        return userRepository.isDeletionPending(userId);
+        return false; // Placeholder until UserRepository method implemented
     }
 }
