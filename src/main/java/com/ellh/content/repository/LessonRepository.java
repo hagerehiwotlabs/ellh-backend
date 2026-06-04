@@ -49,4 +49,7 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
 
     /** Count active lessons per language for admin dashboard stats. */
     long countByLanguageIdAndActiveTrue(Long languageId);
+
+    @Query("SELECT l.contentId FROM Lesson l")
+    List<String> findAllContentIds();
 }

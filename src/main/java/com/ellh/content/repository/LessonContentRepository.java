@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Spring Data MongoDB repository for the lesson_content collection.
@@ -33,4 +34,8 @@ public interface LessonContentRepository extends MongoRepository<LessonContent, 
      */
     @Query("{ 'lesson_id': ?0 }")
     Optional<LessonContent> findByLessonIdForUpdate(Long lessonId);
+
+    default List<String> findAllIds() {
+        return findAll().stream().map(LessonContent::getId).collect(Collectors.toList());
+    }
 }

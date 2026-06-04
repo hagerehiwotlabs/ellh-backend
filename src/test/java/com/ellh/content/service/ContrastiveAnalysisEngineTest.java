@@ -1,11 +1,13 @@
 package com.ellh.content.service;
 
-import com.ellh.content.model.ContrastiveNote;
-import com.ellh.content.model.ContrastiveRule;
-import com.ellh.content.repository.ContrastiveRuleRepository;
+import com.ellh.learning.document.ContrastiveRule;
+import com.ellh.learning.dto.ContrastiveNote;
+import com.ellh.learning.repository.ContrastiveRuleRepository;
+import com.ellh.learning.service.ContrastiveAnalysisEngine;
 import com.ellh.infrastructure.cache.AIResponseCacheAdapter;
 import com.ellh.user.repository.LearnerProfileRepository;
-import com.ellh.user.model.LearnerProfile;
+import com.ellh.user.entity.LearnerProfile;
+import com.ellh.user.entity.PathwayType;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,20 +23,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Unit tests for ContrastiveAnalysisEngine — coverage gap-fill (Sprint 9 NFR-15).
- *
- * Tests:
- *   1. Language pair with matching rules returns ContrastiveNote.
- *   2. Language pair with no rules returns empty/null gracefully.
- *   3. lessonId not in applicable_lessons returns empty gracefully.
- *   4. BILINGUAL_LEARNER pathway → isApplicable() returns true.
- *   5. FOREIGN_LEARNER pathway → isApplicable() returns false.
- *   6. Result is cached via AIResponseCacheAdapter after first fetch.
- *
- * Section 4.5.1 ContrastiveAnalysisEngine.
- * NFR-15 coverage gap-fill.
- */
 @ExtendWith(MockitoExtension.class)
 class ContrastiveAnalysisEngineTest {
 
@@ -47,11 +35,11 @@ class ContrastiveAnalysisEngineTest {
 
     @Test
     void generateContrastiveNote_withMatchingRules_returnsNote() {
-        ContrastiveRule rule = buildRule("amh", "tir", "lesson-1", "GRAMMAR");
-        when(ruleRepository.findByLanguagePairAndLesson("amh", "tir", "lesson-1"))
+        ContrastiveRule rule = buildRule("amh", "tir", 1L, "GRAMMAR");
+        when(ruleRepository.findByLanguagePairAndLesson("amh", "tir", 1L))
                 .thenReturn(Arrays.asList(rule));
 
-        ContrastiveNote note = engine.generateContrastiveNote(1L, "amh", "tir", "lesson-1");
+        ContrastiveNote note = engine.generateContrastiveNote(1L, "amh", "tir", 1L);
 
         assertNotNull(note, "ContrastiveNote should not be null when rules exist");
         assertEquals("GRAMMAR", note.getRuleCategory());
@@ -59,20 +47,20 @@ class ContrastiveAnalysisEngineTest {
 
     @Test
     void generateContrastiveNote_noMatchingRules_returnsNull() {
-        when(ruleRepository.findByLanguagePairAndLesson(anyString(), anyString(), anyString()))
+        when(ruleRepository.findByLanguagePairAndLesson(anyString(), anyString(), anyLong()))
                 .thenReturn(Collections.emptyList());
 
-        ContrastiveNote note = engine.generateContrastiveNote(1L, "amh", "orm", "lesson-99");
+        ContrastiveNote note = engine.generateContrastiveNote(1L, "amh", "orm", 99L);
 
         assertNull(note, "ContrastiveNote should be null when no rules match");
     }
 
     @Test
     void generateContrastiveNote_lessonNotInApplicableList_returnsNull() {
-        when(ruleRepository.findByLanguagePairAndLesson("amh", "tir", "lesson-99"))
+        when(ruleRepository.findByLanguagePairAndLesson("amh", "tir", 99L))
                 .thenReturn(Collections.emptyList());
 
-        ContrastiveNote note = engine.generateContrastiveNote(1L, "amh", "tir", "lesson-99");
+        ContrastiveNote note = engine.generateContrastiveNote(1L, "amh", "tir", 99L);
 
         assertNull(note, "Lesson not in applicable_lessons should return null");
     }
@@ -80,7 +68,7 @@ class ContrastiveAnalysisEngineTest {
     @Test
     void isApplicable_bilingualLearnerPathway_returnsTrue() {
         LearnerProfile profile = new LearnerProfile();
-        profile.setPathwayType("BILINGUAL_LEARNER");
+        profile.setPathwayType(PathwayType.BILINGUAL_LEARNER);
         when(learnerProfileRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
 
         assertTrue(engine.isApplicable(1L),
@@ -90,7 +78,7 @@ class ContrastiveAnalysisEngineTest {
     @Test
     void isApplicable_foreignLearnerPathway_returnsFalse() {
         LearnerProfile profile = new LearnerProfile();
-        profile.setPathwayType("FOREIGN_LEARNER");
+        profile.setPathwayType(PathwayType.FOREIGN_LEARNER);
         when(learnerProfileRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
 
         assertFalse(engine.isApplicable(1L),
@@ -98,19 +86,19 @@ class ContrastiveAnalysisEngineTest {
     }
 
     @Test
-    void generateContrastiveNote_resultisCachedAfterFetch() {
-        ContrastiveRule rule = buildRule("amh", "tir", "lesson-1", "PHONOLOGY");
-        when(ruleRepository.findByLanguagePairAndLesson("amh", "tir", "lesson-1"))
+    void generateContrastiveNote_resultIsCachedAfterFetch() {
+        ContrastiveRule rule = buildRule("amh", "tir", 1L, "PHONOLOGY");
+        when(ruleRepository.findByLanguagePairAndLesson("amh", "tir", 1L))
                 .thenReturn(Arrays.asList(rule));
 
-        engine.generateContrastiveNote(1L, "amh", "tir", "lesson-1");
+        engine.generateContrastiveNote(1L, "amh", "tir", 1L);
 
         verify(cacheAdapter).cacheContrastiveNote(anyString(), any(ContrastiveNote.class));
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+    // ── Helper ────────────────────────────────────────────────────────────
 
-    private ContrastiveRule buildRule(String src, String tgt, String lessonId, String category) {
+    private ContrastiveRule buildRule(String src, String tgt, Long lessonId, String category) {
         ContrastiveRule r = new ContrastiveRule();
         r.setSourceLanguage(src);
         r.setTargetLanguage(tgt);
