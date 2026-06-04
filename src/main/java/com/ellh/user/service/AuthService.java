@@ -15,43 +15,32 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+// ── ADDED IMPORTS FOR LATE REGISTRATION SUPPORT ──
+import com.ellh.content.entity.Language;
+import com.ellh.learning.entity.LearnerLanguage;
+import com.ellh.learning.repository.LearnerLanguageRepository;
 
 import java.util.Optional;
 
-/**
- * Handles user registration, login, and JWT token lifecycle.
- * Section 4.5.1 — User Domain (AuthService).
- * Section 4.5.5.2 FLOW-01 — Authentication and JWT Lifecycle.
- *
- * Three operations:
- *   register()  — creates User + LearnerProfile (for learner types), mints tokens
- *   login()     — authenticates credentials, enforces lockout, mints tokens
- *   refresh()   — validates refresh token, mints new access token
- */
-@Slf4j
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository          userRepository;
-    private final LearnerProfileRepository learnerProfileRepository;
-    private final PasswordEncoder          passwordEncoder;
-    private final JWTService               jwtService;
-    private final SessionCacheService      sessionCacheService;
-    private final AuthenticationManager    authenticationManager;
+    private final UserRepository                  userRepository;
+    private final LearnerProfileRepository        learnerProfileRepository;
+    private final PasswordEncoder                  passwordEncoder;
+    private final JWTService                       jwtService;
+    private final SessionCacheService              sessionCacheService;
+    private final AuthenticationManager            authenticationManager;
+    
+    // ── INJECTED REPOSITORY ──
+    private final LanguageRepository languageRepository;
+    private final LearnerLanguageRepository        learnerLanguageRepository;
 
     // ── register ──────────────────────────────────────────────────────────────
 
-    /**
-     * Registers a new user account.
-     * For FOREIGN_LEARNER and BILINGUAL_LEARNER types a LearnerProfile is created
-     * with default values (pathway set during DiagnosticAssessment in Sprint 3).
-     *
-     * @throws DuplicateResourceException if email is already registered
-     */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail().toLowerCase())) {
@@ -59,62 +48,78 @@ public class AuthService {
                     "An account with this email address already exists");
         }
 
+        // 1. Save the Base User
         User user = User.builder()
                 .email(request.getEmail().toLowerCase())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .accountStatus(AccountStatus.ACTIVE) // skip email verification for v1.0
+                .accountStatus(AccountStatus.ACTIVE)
                 .authProvider(AuthProvider.LOCAL)
                 .userType(request.getUserType())
                 .build();
 
-        User saved = userRepository.save(user);
-        log.info("User registered: id={} type={}", saved.getId(), request.getUserType());
+        User savedUser = userRepository.save(user);
 
-        log.info("Registration - email: {}, raw password: {}, encoded password: {}", 
-            request.getEmail(), request.getPassword(), saved.getPasswordHash());
-
-        // Create LearnerProfile for learner accounts (ContentAdmin has no profile)
         boolean isLearner = request.getUserType() == UserType.FOREIGN_LEARNER
                          || request.getUserType() == UserType.BILINGUAL_LEARNER;
 
         if (isLearner) {
+            // 2. Parse onboarding payload
+            PathwayType pathway = request.getPathwayType() != null 
+                    ? PathwayType.valueOf(request.getPathwayType()) 
+                    : PathwayType.FOREIGN_LEARNER;
+                    
+            CefrLevel cefr = request.getCurrentCefrLevel() != null 
+                    ? CefrLevel.valueOf(request.getCurrentCefrLevel().toUpperCase()) 
+                    : CefrLevel.A1;
+                    
+            int goalMinutes = request.getDailyGoalMinutes() != null ? request.getDailyGoalMinutes() : 10;
+
+            // 3. Save the LearnerProfile (Marking Onboarding Complete instantly!)
             LearnerProfile profile = LearnerProfile.builder()
-                    .user(saved)
-                    .pathwayType(PathwayType.FOREIGN_LEARNER) // default; updated in DiagnosticAssessment
-                    .currentCefrLevel(CefrLevel.A1)
-                    .onboardingComplete(false)
+                    .user(savedUser)
+                    .pathwayType(pathway)
+                    .currentCefrLevel(cefr)
+                    .dailyGoalMinutes(goalMinutes)
+                    .nativeLanguageId(request.getNativeLanguageId())
+                    .targetLanguageId(request.getTargetLanguageId())
+                    .onboardingComplete(true) // No separate PUT call needed!
                     .build();
             learnerProfileRepository.save(profile);
+
+            // 4. Create and Save the Active Target Language record
+            if (request.getTargetLanguageId() != null) {
+                Language targetLanguage = languageRepository.findById(request.getTargetLanguageId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Language", request.getTargetLanguageId()));
+                        
+                LearnerLanguage learnerLanguage = LearnerLanguage.builder()
+                        .user(savedUser)
+                        .language(targetLanguage)
+                        .cefrLevel(cefr)
+                        .isActive(true)
+                        .build();
+                learnerLanguageRepository.save(learnerLanguage);
+            }
         }
 
-        return buildAuthResponse(saved, false);
+        return buildAuthResponse(savedUser, isLearner);
     }
 
     // ── login ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Authenticates a user and returns JWT tokens.
-     * Enforces the 5-attempt account lockout (User.isAccountNonLocked()).
-     * Updates last_active on successful login.
-     *
-     * @throws UnauthorizedException if credentials are invalid or account is locked
-     */
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        // --- DEBUG START ---
         log.info("Login attempt - email: {}, raw password: '{}'", request.getEmail(), request.getPassword());
         userRepository.findByEmail(request.getEmail().toLowerCase())
             .ifPresent(user -> log.info("Stored password hash for {}: {}", request.getEmail(), user.getPasswordHash()));
-        // --- DEBUG END ---
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getEmail().toLowerCase(),
                             request.getPassword()));
         } catch (BadCredentialsException e) {
-            // Increment the failed attempt counter
             userRepository.findByEmail(request.getEmail().toLowerCase())
                     .ifPresent(u -> userRepository.incrementFailedAttempts(u.getId()));
             log.warn("BadCredentialsException for email: {}", request.getEmail());
@@ -124,16 +129,6 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail().toLowerCase())
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
-        log.info("Login attempt - email: {}", request.getEmail());
-        log.info("Stored password hash: {}", user.getPasswordHash());
-        log.info("Raw password from request: {}", request.getPassword());
-        boolean matches = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
-        log.info("Password matches: {}", matches);
-        // Manual password match test
-        boolean manualMatch = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
-        log.info("Manual password match: {}", manualMatch);
-
-        // Reset failed attempts and record login time
         userRepository.resetFailedAttempts(user.getId());
         user.recordSuccessfulLogin();
         userRepository.save(user);
@@ -152,13 +147,6 @@ public class AuthService {
 
     // ── refresh ───────────────────────────────────────────────────────────────
 
-    /**
-     * Validates the refresh token and mints a new access token.
-     * The refresh token itself is NOT rotated — it retains its 30-day expiry.
-     * Android calls this silently via OkHttp Authenticator when it receives a 401.
-     *
-     * @throws UnauthorizedException if refresh token is invalid or expired
-     */
     @Transactional(readOnly = true)
     public AuthResponse refresh(RefreshTokenRequest request) {
         String refreshToken = request.getRefreshToken();
@@ -178,7 +166,6 @@ public class AuthService {
         String newAccessToken = jwtService.generateAccessToken(
                 user.getId(), user.getEmail(), user.getUserType().name());
 
-        // Extend Redis session TTL
         sessionCacheService.extendSession(user.getId());
 
         log.debug("Token refreshed for userId={}", user.getId());
@@ -210,7 +197,6 @@ public class AuthService {
                 user.getId(), user.getEmail(), user.getUserType().name());
         String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail());
 
-        // Store session in Redis (non-blocking; session loss on Redis outage is acceptable)
         sessionCacheService.createSession(user.getId(), accessToken.substring(0, 8));
 
         Optional<PathwayType> pathway = (user.getUserType() == UserType.FOREIGN_LEARNER

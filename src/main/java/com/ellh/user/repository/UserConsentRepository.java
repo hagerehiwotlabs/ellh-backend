@@ -23,4 +23,6 @@ public interface UserConsentRepository extends JpaRepository<UserConsent, Long> 
     @Modifying
     @Query("UPDATE UserConsent c SET c.revokedAt = :ts WHERE c.user.id = :userId AND c.revokedAt IS NULL")
     void revokeAllForUser(@Param("userId") Long userId, @Param("ts") Instant ts);
+
+    void deleteByUserId(Long userId);
 }
