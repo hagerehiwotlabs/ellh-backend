@@ -69,36 +69,24 @@ public class SecurityConfig {
             }))
 
             // ── Endpoint authorisation rules ─────────────────────────────────
-            // .authorizeHttpRequests(auth -> auth
-            //     // Public endpoints — no JWT required
-            //     .requestMatchers(
-            //         "/api/v1/auth/register",
-            //         "/api/v1/auth/login",
-            //         "/api/v1/auth/refresh",
-            //         "/actuator/health",
-            //         "/actuator/info"
-            //     ).permitAll()
-
-            //     .requestMatchers("/api/v1/languages/**").authenticated()
-
-            //     // ContentAdmin + SystemAdmin only
-            //     .requestMatchers(HttpMethod.POST,   "/api/v1/lessons/**").hasAnyRole(
-            //             UserType.CONTENT_ADMIN.name(), UserType.SYSTEM_ADMIN.name())
-            //     .requestMatchers(HttpMethod.PUT,    "/api/v1/lessons/**").hasAnyRole(
-            //             UserType.CONTENT_ADMIN.name(), UserType.SYSTEM_ADMIN.name())
-            //     .requestMatchers(HttpMethod.DELETE, "/api/v1/lessons/**").hasAnyRole(
-            //             UserType.CONTENT_ADMIN.name(), UserType.SYSTEM_ADMIN.name())
-            //     .requestMatchers(HttpMethod.POST,   "/api/v1/contrastive/rules").hasAnyRole(
-            //             UserType.CONTENT_ADMIN.name(), UserType.SYSTEM_ADMIN.name())
-            //     .requestMatchers("/api/v1/feedback/admin/**").hasAnyRole(
-            //             UserType.CONTENT_ADMIN.name(), UserType.SYSTEM_ADMIN.name())
-
-            //     // All other /api/v1/** endpoints require authentication
-            //     .requestMatchers("/api/v1/**").authenticated()
-
-            //     // Deny everything else
-            //     .anyRequest().denyAll()
-            // )
+            // ── RESTORED: Secure Endpoint authorisation rules ────────────────
+//            .authorizeHttpRequests(auth -> auth
+//                // Public endpoints — no JWT required
+//                .requestMatchers(
+//                    "/api/v1/auth/register",
+//                    "/api/v1/auth/login",
+//                    "/api/v1/auth/refresh",
+//                    "/api/v1/languages/**",
+//                    "/actuator/health",
+//                    "/actuator/info"
+//                ).permitAll()
+//
+//                // All other API endpoints require a valid JWT token
+//                .requestMatchers("/api/v1/**").authenticated()
+//
+//                // Deny everything else for defense-in-depth
+//                .anyRequest().denyAll()
+//            )
 
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/**").permitAll()   // ← everything is public
