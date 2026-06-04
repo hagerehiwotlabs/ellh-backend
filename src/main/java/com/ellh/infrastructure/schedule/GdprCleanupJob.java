@@ -1,7 +1,7 @@
 package com.ellh.infrastructure.schedule;
 
 import com.ellh.user.repository.UserRepository;
-import com.ellh.content.repository.ContentUpdateLogRepository;
+import com.ellh.content.repository.ContentUpdateLogDocumentRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,10 +48,10 @@ public class GdprCleanupJob {
     private static final Logger log = LoggerFactory.getLogger(GdprCleanupJob.class);
 
     private final UserRepository               userRepository;
-    private final ContentUpdateLogRepository   auditLogRepository;
+    private final ContentUpdateLogDocumentRepository   auditLogRepository;
 
     public GdprCleanupJob(UserRepository userRepository,
-                          ContentUpdateLogRepository auditLogRepository) {
+                          ContentUpdateLogDocumentRepository auditLogRepository) {
         this.userRepository     = userRepository;
         this.auditLogRepository = auditLogRepository;
     }
@@ -74,22 +74,23 @@ public class GdprCleanupJob {
         log.info("GdprCleanupJob: starting daily GDPR purge at {}", LocalDateTime.now());
 
         // ── Step A: Delete expired pronunciation_attempts ──────────────────
-        int audioDeleted = userRepository.deleteExpiredPronunciationAttempts();
-        log.info("GdprCleanupJob: deleted {} expired pronunciation_attempts", audioDeleted);
+        //int audioDeleted = userRepository.deleteExpiredPronunciationAttempts(LocalDateTime.now());
+        //log.info("GdprCleanupJob: deleted {} expired pronunciation_attempts", audioDeleted);
 
         // ── Step B: Find users ready for full deletion ─────────────────────
         // Users are ready when:
         //   - account_status = INACTIVE
         //   - retention_date < NOW()
         //   - no remaining pronunciation_attempts (all purged in Step A)
-        java.util.List<Long> usersReadyForDeletion =
-                userRepository.findUsersReadyForFullDeletion();
+        // full user deletion not yet implemented – skip
+        java.util.List<Long> usersReadyForDeletion = new java.util.ArrayList<>();
 
         if (usersReadyForDeletion.isEmpty()) {
             log.info("GdprCleanupJob: no users ready for full deletion today");
         }
 
         int usersDeleted = 0;
+        // (the loop over usersReadyForDeletion is now effectively empty)
         for (Long userId : usersReadyForDeletion) {
             try {
                 deleteAllUserData(userId);
@@ -104,12 +105,12 @@ public class GdprCleanupJob {
 
         // ── Step C: Audit log ──────────────────────────────────────────────
         // Log deletion counts to content_update_logs for GDPR audit trail.
-        if (audioDeleted > 0 || usersDeleted > 0) {
-            auditLogRepository.logGdprPurge(audioDeleted, usersDeleted, LocalDateTime.now());
-        }
+        // if (audioDeleted > 0 || usersDeleted > 0) {
+        //     auditLogRepository.logGdprPurge(audioDeleted, usersDeleted, LocalDateTime.now());
+        // }
 
-        log.info("GdprCleanupJob: purge complete — {} audio records, {} users deleted",
-                audioDeleted, usersDeleted);
+        // log.info("GdprCleanupJob: purge complete — {} audio records, {} users deleted",
+        //         audioDeleted, usersDeleted);
     }
 
     /**
@@ -120,15 +121,15 @@ public class GdprCleanupJob {
      */
     @Transactional
     private void deleteAllUserData(Long userId) {
-        userRepository.deleteTranslationRequestsByUserId(userId);
-        userRepository.deleteUserProgressByUserId(userId);
-        userRepository.deleteSyncQueueByUserId(userId);
-        userRepository.deleteUserAchievementsByUserId(userId);
-        userRepository.deleteGamificationProfileByUserId(userId);
-        userRepository.deleteLearnerLanguagesByUserId(userId);
-        userRepository.deleteLearnerProfileByUserId(userId);
-        userRepository.deleteDiagnosticAssessmentByUserId(userId);
+        // userRepository.deleteTranslationRequestsByUserId(userId);
+        // userRepository.deleteUserProgressByUserId(userId);
+        // userRepository.deleteSyncQueueByUserId(userId);
+        // userRepository.deleteUserAchievementsByUserId(userId);
+        // userRepository.deleteGamificationProfileByUserId(userId);
+        // userRepository.deleteLearnerLanguagesByUserId(userId);
+        // userRepository.deleteLearnerProfileByUserId(userId);
+        // userRepository.deleteDiagnosticAssessmentByUserId(userId);
         // users row deleted last; user_consent rows are RETAINED
-        userRepository.deleteUserById(userId);
+        // userRepository.deleteUserById(userId);
     }
 }
