@@ -13,14 +13,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-/**
- * Section 4.5.2.3 — idx_feedback_status_severity (composite B-tree).
- * Admin dashboard queries filter by status + severity simultaneously.
- */
 @Repository
 public interface FeedbackReportRepository extends JpaRepository<FeedbackReport, Long> {
 
-    /** Admin dashboard: open reports ordered by severity then submission date. */
     Page<FeedbackReport> findByStatus(FeedbackStatus status, Pageable pageable);
 
     Page<FeedbackReport> findByStatusAndSeverity(
@@ -28,7 +23,6 @@ public interface FeedbackReportRepository extends JpaRepository<FeedbackReport, 
 
     List<FeedbackReport> findByUserId(Long userId);
 
-    /** Update status and resolution notes — called by ContentAdmin. */
     @Modifying
     @Query("UPDATE FeedbackReport f SET f.status = :status, " +
            "f.resolutionNotes = :notes, f.resolvedAt = CURRENT_TIMESTAMP " +
@@ -37,4 +31,9 @@ public interface FeedbackReportRepository extends JpaRepository<FeedbackReport, 
             @Param("id") Long id,
             @Param("status") FeedbackStatus status,
             @Param("notes") String notes);
+
+    /** Anonymise all reports submitted by a user (set user reference to null). */
+    @Modifying
+    @Query("UPDATE FeedbackReport fr SET fr.user = null WHERE fr.user.id = :userId")
+    void anonymiseByUserId(@Param("userId") Long userId);
 }
