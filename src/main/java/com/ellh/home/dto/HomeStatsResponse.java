@@ -3,12 +3,6 @@ package com.ellh.home.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
-/**
- * Home/Dashboard statistics response.
- * GET /api/v1/home/stats?languageId={id}
- *
- * Contains aggregated user engagement metrics for the home screen.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,8 +19,11 @@ public class HomeStatsResponse {
     @JsonProperty("total_xp")
     private Integer totalXp;
 
-    @JsonProperty("daily_xp")
-    private Integer dailyXp;
+    @JsonProperty("current_daily_xp")
+    private Integer currentDailyXp;
+
+    @JsonProperty("daily_goal_xp")
+    private Integer dailyGoalXp;
 
     @JsonProperty("current_streak")
     private Integer currentStreak;
@@ -41,8 +38,8 @@ public class HomeStatsResponse {
     private Integer exercisesCompleted;
 
     @JsonProperty("current_level")
-    private String currentLevel;
+    private Integer currentLevel;
 
     @JsonProperty("level_progress")
-    private Integer levelProgress;  // 0-100 percentage to next level
+    private Integer levelProgress;  
 }
