@@ -1,5 +1,15 @@
 package com.ellh.user.dto;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public class UpdateProfileRequest  {
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+@Data
+public class UpdateProfileRequest {
+    @Size(max = 100)
+    private String firstName;
+
+    @Size(max = 100)
+    private String lastName;
+
+    private String profileImageUrl;
 }

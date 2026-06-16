@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 // ── ADDED IMPORTS FOR LATE REGISTRATION SUPPORT ──
 import com.ellh.content.entity.Language;
+import com.ellh.content.repository.LanguageRepository;
 import com.ellh.learning.entity.LearnerLanguage;
 import com.ellh.learning.repository.LearnerLanguageRepository;
+import com.ellh.infrastructure.exception.ResourceNotFoundException;
 
 import java.util.Optional;
 
