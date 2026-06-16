@@ -1,5 +1,18 @@
 package com.ellh.sync.dto;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public class SyncBatchRequest  {
+import lombok.Data;
+import java.util.List;
+
+@Data
+public class SyncBatchRequest {
+    private String batchId;
+    private List<SyncEventDto> events;
+
+    @Data
+    public static class SyncEventDto {
+        private String idempotencyKey;
+        private String actionType; // EXERCISE_COMPLETE, LESSON_COMPLETE, FEEDBACK_SUBMIT
+        private java.util.Map<String, Object> payload;
+        private long createdAt;
+    }
 }

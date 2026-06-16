@@ -1,5 +1,14 @@
 package com.ellh.sync.dto;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public class SyncBatchResponse  {
+import lombok.Builder;
+import lombok.Data;
+import java.util.List;
+
+@Data
+@Builder
+public class SyncBatchResponse {
+    private int processedCount;
+    private int skippedCount;
+    private int conflictCount;
+    private List<Long> achievementsUnlocked;
 }
