@@ -1,5 +1,16 @@
 package com.ellh.ai.gateway;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public class MockAIService  {
+import com.ellh.ai.dto.PronunciationResponse;
+import org.springframework.stereotype.Service;
+import java.util.ArrayList;
+
+@Service
+public class MockAIService {
+    public PronunciationResponse analyze(String targetWord) {
+        return PronunciationResponse.builder()
+                .confidenceScore(0.85)
+                .feedbackText("Excellent! Mock pronunciation match.")
+                .syllableBreakdown(new ArrayList<>())
+                .build();
+    }
 }

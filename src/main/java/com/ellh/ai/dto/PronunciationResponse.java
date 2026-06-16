@@ -1,5 +1,20 @@
 package com.ellh.ai.dto;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public class PronunciationResponse  {
+import lombok.Builder;
+import lombok.Data;
+import java.util.List;
+
+@Data
+@Builder
+public class PronunciationResponse {
+    private double confidenceScore;
+    private String feedbackText;
+    private List<SyllableScore> syllableBreakdown;
+    private int processingTimeMs;
+
+    @Data
+    public static class SyllableScore {
+        private final String syllable;
+        private final int score;
+    }
 }

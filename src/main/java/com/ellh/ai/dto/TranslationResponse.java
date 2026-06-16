@@ -1,5 +1,14 @@
 package com.ellh.ai.dto;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public class TranslationResponse  {
+import lombok.Builder;
+import lombok.Data;
+
+@Data
+@Builder
+public class TranslationResponse {
+    private String targetText;
+    private String sourceLanguage;
+    private String targetLanguage;
+    private boolean cachedResult;
+    private int processingTimeMs;
 }
