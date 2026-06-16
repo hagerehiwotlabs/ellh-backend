@@ -1,5 +1,12 @@
 package com.ellh.gamification.repository;
 
-// TODO: Implement — see Chapter 4, Section 4.5.1 for full specification
-public interface AchievementRepository  {
+import com.ellh.gamification.entity.Achievement;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface AchievementRepository extends JpaRepository<Achievement, Long> {
+    List<Achievement> findByActiveTrue();
 }
