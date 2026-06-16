@@ -9,6 +9,8 @@ import com.ellh.user.entity.LearnerProfile;
 import com.ellh.user.repository.LearnerProfileRepository;
 import com.ellh.gamification.entity.GamificationProfile;
 import com.ellh.gamification.repository.GamificationProfileRepository;
+import com.ellh.learning.entity.LearnerLanguage;
+import com.ellh.learning.repository.LearnerLanguageRepository; // Imported
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +30,8 @@ public class HomeService {
 
     private final LanguageRepository languageRepository;
     private final LearnerProfileRepository learnerProfileRepository;
-    private final GamificationProfileRepository gamificationProfileRepository; // Autowired
+    private final GamificationProfileRepository gamificationProfileRepository;
+    private final LearnerLanguageRepository learnerLanguageRepository; // Injected
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -53,15 +56,20 @@ public class HomeService {
             }
         }
 
-        // Fetch real data from source of truth!
+        // Fetch real data from source of truth
         LearnerProfile profile = learnerProfileRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
 
         GamificationProfile gProfile = gamificationProfileRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Gamification profile not found"));
 
-        // Build response mapping actual JPA entities [2]
-        HomeStatsResponse stats = buildHomeStats(currentUser, language, profile, gProfile);
+        // Retrieve lessons completed for this target language dynamically
+        int completedLessons = learnerLanguageRepository.findByUserIdAndLanguageId(currentUser.getId(), languageId)
+                .map(LearnerLanguage::getLessonsCompleted)
+                .orElse(0);
+
+        // Build response mapping actual JPA entities
+        HomeStatsResponse stats = buildHomeStats(currentUser, language, profile, gProfile, completedLessons);
 
         try {
             String statsJson = objectMapper.writeValueAsString(stats);
@@ -73,16 +81,16 @@ public class HomeService {
         return stats;
     }
 
-    private HomeStatsResponse buildHomeStats(User user, Language language, LearnerProfile profile, GamificationProfile gProfile) {
-        // Calculate daily goal XP: standard conversion is 5 XP per 1 minute of daily commitment [2]
+    private HomeStatsResponse buildHomeStats(User user, Language language, LearnerProfile profile, 
+                                             GamificationProfile gProfile, int completedLessons) {
+        // Calculate daily goal XP: standard conversion is 5 XP per 1 minute of daily commitment
         int dailyGoalXp = profile.getDailyGoalMinutes() * 5; 
 
-        // Check if they studied today to determine today's XP [2]
+        // Check if they studied today to determine today's XP
         int currentDailyXp = 0;
         if (gProfile.getLastActivityDate() != null) {
             boolean studiedToday = gProfile.getLastActivityDate().equals(LocalDate.now());
-            // If they studied today, pull progress; otherwise it's 0 for today [2]
-            currentDailyXp = studiedToday ? gProfile.getTotalXP() % dailyGoalXp : 0; // Simplified estimation
+            currentDailyXp = studiedToday ? gProfile.getTotalXP() % dailyGoalXp : 0;
         }
 
         return HomeStatsResponse.builder()
@@ -93,9 +101,9 @@ public class HomeService {
                 .dailyGoalXp(dailyGoalXp)
                 .currentStreak(gProfile.getCurrentStreak())
                 .longestStreak(gProfile.getLongestStreak())
-                .lessonsCompleted(gProfile.getLessonsCompleted())
-                .currentLevel(gProfile.getLevel()) // Integer matching DB! [2]
-                .levelProgress(35) // Hardcoded 35% progress to next level for now [2]
+                .lessonsCompleted(completedLessons) // Dynamic language-specific lesson count
+                .currentLevel(gProfile.getLevel())
+                .levelProgress(35) // Hardcoded 35% progress to next level
                 .build();
     }
 

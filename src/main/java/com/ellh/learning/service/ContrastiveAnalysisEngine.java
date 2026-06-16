@@ -5,6 +5,7 @@ import com.ellh.learning.document.ContrastiveRule;
 import com.ellh.learning.dto.ContrastiveNote;
 import com.ellh.learning.repository.ContrastiveRuleRepository;
 import com.ellh.user.entity.LearnerProfile;
+import com.ellh.user.entity.PathwayType; // Imported to resolve type mismatch
 import com.ellh.user.repository.LearnerProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -52,6 +53,7 @@ public class ContrastiveAnalysisEngine {
      */
     public boolean isApplicable(Long userId) {
         Optional<LearnerProfile> profile = learnerProfileRepository.findByUserId(userId);
-        return profile.isPresent() && "BILINGUAL_LEARNER".equals(profile.get().getPathwayType());
+        // Corrected comparison: compare Enum types directly using ==
+        return profile.isPresent() && profile.get().getPathwayType() == PathwayType.BILINGUAL_LEARNER;
     }
 }
