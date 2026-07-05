@@ -107,4 +107,7 @@ public class User implements UserDetails {
         this.failedLoginAttempts = 0;
         this.lastActive = Instant.now();
     }
+    
+    @Column(name = "retention_date")
+    private java.time.LocalDateTime retentionDate;
 }

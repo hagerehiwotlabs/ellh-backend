@@ -16,7 +16,6 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
-
     boolean existsByEmail(String email);
 
     @Modifying
@@ -31,74 +30,57 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.failedLoginAttempts = 0 WHERE u.id = :id")
     void resetFailedAttempts(@Param("id") Long id);
 
-    // ── GDPR / Account deletion ────────────────────────────────────────────────
-    // WARNING: The following methods reference JPA entities that may not exist yet.
-    // If a referenced entity is missing, compilation will fail.
-    // You can comment out the offending methods until the entity classes are created.
+    // ── GDPR Pipeline ────────────────────────────────────────────────────────
 
-    // @Modifying
-    //  @Query("DELETE FROM PronunciationAttempt pa WHERE pa.user.id = :userId AND pa.retentionDate < :cutoff")
-    // int deleteExpiredPronunciationAttempts(@Param("cutoff") LocalDateTime cutoff);
-
-    // @Query("SELECT u.id FROM User u WHERE u.accountStatus = 'PENDING_DELETION' AND u.retentionDate < :now")
-    // List<Long> findUsersReadyForFullDeletion(@Param("now") LocalDateTime now);
-
-    // @Modifying
-    // @Query("DELETE FROM TranslationRequest tr WHERE tr.user.id = :userId")
-    // void deleteTranslationRequestsByUserId(@Param("userId") Long userId);
-
-    // @Modifying
-    // @Query("DELETE FROM UserProgress up WHERE up.user.id = :userId")
-    // void deleteUserProgressByUserId(@Param("userId") Long userId);
-
-    // @Modifying
-    // @Query("DELETE FROM SyncEvent se WHERE se.user.id = :userId")
-    // void deleteSyncQueueByUserId(@Param("userId") Long userId);
-
-    // @Modifying
-    // @Query("DELETE FROM UserAchievement ua WHERE ua.user.id = :userId")
-    // void deleteUserAchievementsByUserId(@Param("userId") Long userId);
-
-    // @Modifying
-    // @Query("DELETE FROM GamificationProfile gp WHERE gp.user.id = :userId")
-    // void deleteGamificationProfileByUserId(@Param("userId") Long userId);
-
-@Modifying
-@Query("DELETE FROM LearnerLanguage ll WHERE ll.user.id = :userId")
-void deleteLearnerLanguagesByUserId(@Param("userId") Long userId);
-
-@Modifying
-@Query("DELETE FROM LearnerProfile lp WHERE lp.user.id = :userId")
-void deleteLearnerProfilesByUserId(@Param("userId") Long userId);
-
-@Modifying
-@Query("DELETE FROM DiagnosticAssessment da WHERE da.user.id = :userId")
-void deleteDiagnosticAssessmentsByUserId(@Param("userId") Long userId);
-
-@Modifying
-@Query("DELETE FROM User u WHERE u.id = :userId")
-void deleteUserById(@Param("userId") Long userId);
-
-    //@Modifying
-    //@Query("UPDATE User u SET u.accountStatus = 'INACTIVE' WHERE u.id = :userId")
-  //  void setAccountStatusInactive(@Param("userId") Long userId);
-
-    //@Modifying
-    //@Query("UPDATE PronunciationAttempt pa SET pa.retentionDate = :retentionDate WHERE pa.user.id = :userId")
-    //void markPronunciationAttemptsForDeletion(@Param("userId") Long userId, @Param("retentionDate") LocalDateTime retentionDate);
-
-    // @Modifying
-    // @Query("UPDATE User u SET u.retentionDate = :retentionDate WHERE u.id = :userId")
-    // void setRetentionDateForFullDeletion(@Param("userId") Long userId, @Param("retentionDate") LocalDateTime retentionDate);
-/*
-    @Modifying
-    @Query("UPDATE User u SET u.fcmToken = NULL WHERE u.id = :userId")
-    void clearFcmToken(@Param("userId") Long userId);
-
-    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.id = :userId AND u.accountStatus = 'PENDING_DELETION'")
-    boolean isDeletionPending(@Param("userId") Long userId);*/
+    @Query("SELECT u.id FROM User u WHERE u.accountStatus = 'INACTIVE' AND u.retentionDate < :now")
+    List<Long> findUsersReadyForFullDeletion(@Param("now") LocalDateTime now);
 
     @Modifying
-    @Query("DELETE FROM UserConsent uc WHERE uc.user.id = :userId")
-    void deleteUserConsentByUserId(@Param("userId") Long userId);
+    @Query("DELETE FROM PronunciationAttempt pa WHERE pa.user.id = :userId AND pa.retentionDate < :cutoff")
+    int deleteExpiredPronunciationAttempts(@Param("userId") Long userId, @Param("cutoff") LocalDateTime cutoff);
+
+    @Modifying
+    @Query("DELETE FROM TranslationRequest tr WHERE tr.user.id = :userId")
+    void deleteTranslationRequestsByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM UserProgress up WHERE up.user.id = :userId")
+    void deleteUserProgressByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM UserAchievement ua WHERE ua.user.id = :userId")
+    void deleteUserAchievementsByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM GamificationProfile gp WHERE gp.user.id = :userId")
+    void deleteGamificationProfileByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM LearnerLanguage ll WHERE ll.user.id = :userId")
+    void deleteLearnerLanguagesByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM LearnerProfile lp WHERE lp.user.id = :userId")
+    void deleteLearnerProfilesByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM DiagnosticAssessment da WHERE da.user.id = :userId")
+    void deleteDiagnosticAssessmentsByUserId(@Param("userId") Long userId);
+
+    /**
+     * TOMBSTONING: Because user_consent is ON DELETE RESTRICT (7-year legal hold),
+     * we cannot hard-delete the user row. We scramble the PII instead to fulfill GDPR "Right to be Forgotten".
+     */
+    @Modifying
+    @Query("UPDATE User u SET u.email = CONCAT('deleted_', u.id, '@ellh.app'), " +
+           "u.firstName = 'Deleted', u.lastName = 'User', u.passwordHash = 'PURGED', " +
+           "u.profileImageUrl = NULL, u.fcmToken = NULL WHERE u.id = :userId")
+    void anonymizeUser(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("UPDATE User u SET u.accountStatus = 'INACTIVE', u.retentionDate = :retentionDate WHERE u.id = :userId")
+    void setRetentionDateForFullDeletion(@Param("userId") Long userId, @Param("retentionDate") LocalDateTime retentionDate);
+
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.id = :userId AND u.accountStatus = 'INACTIVE'")
+    boolean isDeletionPending(@Param("userId") Long userId);
 }
