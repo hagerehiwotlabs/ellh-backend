@@ -15,6 +15,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 
 // ── ADDED IMPORTS FOR LATE REGISTRATION SUPPORT ──
 import com.ellh.content.entity.Language;
@@ -36,6 +39,7 @@ public class AuthService {
     private final JWTService                       jwtService;
     private final SessionCacheService              sessionCacheService;
     private final AuthenticationManager            authenticationManager;
+    private final ConsentService consentService;
     
     // ── INJECTED REPOSITORY ──
     private final LanguageRepository languageRepository;
@@ -62,6 +66,21 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+         // Capture IP Address for Legal Audit Trail
+        String ipAddress = "0.0.0.0";
+        if (RequestContextHolder.getRequestAttributes() != null) {
+            HttpServletRequest req = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+            ipAddress = req.getHeader("X-Forwarded-For") != null ? req.getHeader("X-Forwarded-For").split(",")[0] : req.getRemoteAddr();
+        }
+
+        consentService.recordRegistrationConsents(
+                savedUser, 
+                request.isConsentPrivacyPolicy(), 
+                request.isConsentDataCollection(), 
+                request.isConsentAudioRecording(), 
+                ipAddress
+        );
 
         boolean isLearner = request.getUserType() == UserType.FOREIGN_LEARNER
                          || request.getUserType() == UserType.BILINGUAL_LEARNER;

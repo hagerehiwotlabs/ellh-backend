@@ -6,7 +6,6 @@ import lombok.Data;
 
 @Data
 public class RegisterRequest {
-
     @NotBlank(message = "Email is required")
     @Email(message = "Email must be a valid address")
     @Size(max = 255)
@@ -27,11 +26,20 @@ public class RegisterRequest {
     @NotNull(message = "User type is required")
     private UserType userType;
 
-    // ── ONBOARDING FIELDS (Transmitted after Path Recommendation) ──
+    // ── GDPR CONSENTS ──
+    @AssertTrue(message = "Privacy Policy consent is mandatory")
+    private boolean consentPrivacyPolicy;
     
-    private String pathwayType;       // "FOREIGN_LEARNER" or "BILINGUAL_LEARNER"
-    private String currentCefrLevel;   // "A1", "A2", "B1"
+    @AssertTrue(message = "Data Collection consent is mandatory")
+    private boolean consentDataCollection;
+    
+    @AssertTrue(message = "Audio Recording consent is mandatory")
+    private boolean consentAudioRecording;
+
+    // ── ONBOARDING FIELDS ──
+    private String pathwayType;       
+    private String currentCefrLevel;   
     private Integer dailyGoalMinutes;
-    private Long nativeLanguageId;     // The language they speak (Bilingual only)
-    private Long targetLanguageId;     // The language they want to learn
+    private Long nativeLanguageId;     
+    private Long targetLanguageId;     
 }
