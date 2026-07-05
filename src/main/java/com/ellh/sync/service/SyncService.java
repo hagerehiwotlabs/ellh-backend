@@ -9,13 +9,13 @@ import com.ellh.feedback.entity.FeedbackSeverity;
 import com.ellh.feedback.entity.FeedbackStatus;
 import com.ellh.feedback.entity.TargetType;
 import com.ellh.feedback.repository.FeedbackReportRepository;
+import com.ellh.gamification.service.GamificationService; // Added for Phase 3
 import com.ellh.infrastructure.cache.CacheKeyConstants;
 import com.ellh.learning.entity.UserProgress;
 import com.ellh.learning.repository.UserProgressRepository;
 import com.ellh.sync.dto.SyncBatchRequest;
 import com.ellh.sync.dto.SyncBatchResponse;
 import com.ellh.user.entity.User;
-import com.ellh.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -36,10 +36,10 @@ import java.util.Optional;
 public class SyncService {
 
     private final UserProgressRepository userProgressRepository;
-    private final UserRepository userRepository;
     private final LessonRepository lessonRepository;
     private final ExerciseRepository exerciseRepository;
     private final FeedbackReportRepository feedbackRepository;
+    private final GamificationService gamificationService; // Engine injected
     private final RedisTemplate<String, String> redisTemplate;
     private final com.ellh.sync.service.ConflictResolver conflictResolver;
 
@@ -49,7 +49,7 @@ public class SyncService {
         
         int processed = 0;
         int skipped = 0;
-        List<Long> achievements = new ArrayList<>(); // placeholder for Sprint 8 metrics
+        boolean progressUpdated = false;
 
         for (SyncBatchRequest.SyncEventDto event : request.getEvents()) {
             String redisKey = CacheKeyConstants.idempotencyKey(event.getIdempotencyKey());
@@ -62,7 +62,10 @@ public class SyncService {
             }
 
             try {
-                processEvent(currentUser, event);
+                boolean wasProgress = processEvent(currentUser, event);
+                if (wasProgress) {
+                    progressUpdated = true;
+                }
                 
                 // Cache key in Redis with 48-hour expiration
                 redisTemplate.opsForValue().set(redisKey, "PROCESSED", Duration.ofHours(48));
@@ -70,6 +73,12 @@ public class SyncService {
             } catch (Exception e) {
                 log.error("Sync failure for event {}: {}", event.getIdempotencyKey(), e.getMessage());
             }
+        }
+
+        // Phase 3: Evaluate achievements dynamically if progress happened in this batch
+        List<Long> achievements = new ArrayList<>();
+        if (progressUpdated) {
+            achievements = gamificationService.checkAndAwardAchievements(currentUser.getId());
         }
 
         return SyncBatchResponse.builder()
@@ -80,7 +89,11 @@ public class SyncService {
                 .build();
     }
 
-    private void processEvent(User user, SyncBatchRequest.SyncEventDto event) {
+    /**
+     * Processes individual events. Returns TRUE if the event was a progress update
+     * that might trigger an achievement check.
+     */
+    private boolean processEvent(User user, SyncBatchRequest.SyncEventDto event) {
         Map<String, Object> payload = event.getPayload();
         String action = event.getActionType();
 
@@ -93,7 +106,7 @@ public class SyncService {
             Long lessonId = ((Number) payload.get("lessonId")).longValue();
             Long exerciseId = ((Number) payload.get("exerciseId")).longValue();
             String status = (String) payload.get("status");
-            Integer score = ((Number) payload.get("score")).intValue();
+            Integer score = payload.containsKey("score") ? ((Number) payload.get("score")).intValue() : 0;
 
             Lesson lesson = lessonRepository.findById(lessonId).orElseThrow();
             Exercise exercise = exerciseRepository.findById(exerciseId).orElseThrow();
@@ -128,11 +141,12 @@ public class SyncService {
             } else {
                 userProgressRepository.save(incoming);
             }
+            return true;
 
         } else if ("LESSON_COMPLETE".equals(action)) {
             Long lessonId = ((Number) payload.get("lessonId")).longValue();
-            // Safeguard to read actual quiz final score percentage if passed from Android client [4.7, 3.7]
             Integer score = payload.containsKey("score") ? ((Number) payload.get("score")).intValue() : 100;
+            Integer xpEarned = payload.containsKey("xpEarned") ? ((Number) payload.get("xpEarned")).intValue() : 25; // offline XP hook
             
             Lesson lesson = lessonRepository.findById(lessonId).orElseThrow();
 
@@ -158,14 +172,17 @@ public class SyncService {
 
                 existing.setStatus(resolved.getStatus());
                 existing.setScore(resolved.getScore());
-                existing.setAttempts(existing.getAttempts() + 1);
+                existing.setAttempts(existing.getAttempts() + 1); // RESTORED
                 existing.setLastAttemptAt(resolved.getLastAttemptAt());
-                existing.setCompletedAt(resolved.getCompletedAt());
+                existing.setCompletedAt(resolved.getCompletedAt()); // RESTORED
                 
                 userProgressRepository.save(existing);
             } else {
                 userProgressRepository.save(incoming);
+                // ── Grant XP for First-Time Lesson Completion ──
+                gamificationService.awardXP(user.getId(), xpEarned);
             }
+            return true;
 
         } else if ("FEEDBACK_SUBMIT".equals(action)) {
             FeedbackReport report = FeedbackReport.builder()
@@ -178,6 +195,8 @@ public class SyncService {
                     .severity("HIGH".equals(payload.get("severity")) ? FeedbackSeverity.HIGH : FeedbackSeverity.LOW)
                     .build();
             feedbackRepository.save(report);
+            return false;
         }
+        return false;
     }
 }
