@@ -2,12 +2,14 @@ package com.ellh.ai.gateway;
 
 import com.ellh.ai.dto.PronunciationResponse;
 import com.ellh.infrastructure.exception.AIServiceUnavailableException;
+import com.ellh.ai.dto.TranslationRequestDto; 
+import com.ellh.ai.dto.TranslationResponse;
 import com.ellh.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
-import org.springframework.lang.NonNull; // Imported to resolve compilation issue
+import org.springframework.lang.NonNull; 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -89,6 +91,42 @@ public class AIServiceGatewayImpl implements AIServiceGateway {
                 return huggingFaceService.analyze(audio, targetWord);
             } catch (Exception hfEx) {
                 throw new AIServiceUnavailableException("All AI speech services exhausted.");
+            }
+        }
+    }
+
+    @Override
+    public TranslationResponse translateText(TranslationRequestDto request) throws Exception {
+        if ("mock".equalsIgnoreCase(activeProvider)) {
+            return mockService.translate(request);
+        }
+
+        // Circuit Breaker Logic shared with Speech Engine
+        if (state == CircuitBreakerState.OPEN) {
+            long elapsed = System.currentTimeMillis() - lastStateTransitionTime;
+            if (elapsed > 30000) { 
+                state = CircuitBreakerState.HALF_OPEN;
+                log.info("Circuit breaker HALF-OPEN: Testing primary Colab for Translation");
+            } else {
+                return huggingFaceService.translate(request);
+            }
+        }
+
+        try {
+            TranslationResponse res = colabService.translate(request);
+            if (state == CircuitBreakerState.HALF_OPEN) {
+                state = CircuitBreakerState.CLOSED;
+            }
+            return res;
+        } catch (Exception e) {
+            log.warn("Primary Colab failed Translation. Tripping circuit breaker...", e);
+            state = CircuitBreakerState.OPEN;
+            lastStateTransitionTime = System.currentTimeMillis();
+            
+            try {
+                return huggingFaceService.translate(request);
+            } catch (Exception hfEx) {
+                throw new com.ellh.infrastructure.exception.AIServiceUnavailableException("All Translation APIs exhausted.");
             }
         }
     }

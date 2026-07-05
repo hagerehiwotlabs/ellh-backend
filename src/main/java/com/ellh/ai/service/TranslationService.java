@@ -2,6 +2,7 @@ package com.ellh.ai.service;
 
 import com.ellh.ai.dto.TranslationRequestDto;
 import com.ellh.ai.dto.TranslationResponse;
+import com.ellh.ai.gateway.AIServiceGateway;
 import com.ellh.infrastructure.cache.CacheKeyConstants;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -18,13 +19,12 @@ import java.time.Duration;
 public class TranslationService {
 
     private final RedisTemplate<String, String> redisTemplate;
-    private final ObjectMapper objectMapper;
+    private final AIServiceGateway aiServiceGateway; // Injected Real Gateway
 
     public TranslationResponse translate(TranslationRequestDto request) {
         long startTime = System.currentTimeMillis();
         String textHash = DigestUtils.sha256Hex(request.getSourceText().trim());
         
-        // Key format: translate:src:tgt:sha256(text)
         String cacheKey = CacheKeyConstants.TRANSLATE_PREFIX 
                 + request.getSourceLanguage() + ":" 
                 + request.getTargetLanguage() + ":" 
@@ -43,27 +43,22 @@ public class TranslationService {
                     .build();
         }
 
-        // 2. Cache Miss: Simulate translation (Replaced with actual model call in production)
-        String translatedText = mockTranslation(request.getSourceText(), request.getTargetLanguage());
+        // 2. Cache Miss: Execute Live AI Pipeline
+        TranslationResponse liveResponse;
+        try {
+            liveResponse = aiServiceGateway.translateText(request);
+        } catch (Exception e) {
+            log.error("Translation Pipeline Failure", e);
+            throw new com.ellh.infrastructure.exception.AIServiceUnavailableException("Translation Service Down");
+        }
         
-        // Cache result in Redis for 30 days
-        redisTemplate.opsForValue().set(cacheKey, translatedText, Duration.ofDays(30));
+        // 3. Cache result in Redis for 30 days
+        redisTemplate.opsForValue().set(cacheKey, liveResponse.getTargetText(), Duration.ofDays(30));
 
         int elapsed = (int) (System.currentTimeMillis() - startTime);
+        liveResponse.setProcessingTimeMs(elapsed);
+        liveResponse.setCachedResult(false);
 
-        return TranslationResponse.builder()
-                .targetText(translatedText)
-                .sourceLanguage(request.getSourceLanguage())
-                .targetLanguage(request.getTargetLanguage())
-                .cachedResult(false)
-                .processingTimeMs(elapsed)
-                .build();
-    }
-
-    private String mockTranslation(String text, String targetLang) {
-        // Quick dictionary mapping for verified tests
-        if (text.equalsIgnoreCase("hello") && targetLang.equals("amh")) return "ሰላም (Selam)";
-        if (text.equalsIgnoreCase("thank you") && targetLang.equals("amh")) return "አመሰግናለሁ (Ameseginalehu)";
-        return "Translated: " + text;
+        return liveResponse;
     }
 }

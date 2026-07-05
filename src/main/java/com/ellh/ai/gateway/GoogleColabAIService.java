@@ -9,6 +9,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ellh.ai.dto.TranslationRequestDto;
+import com.ellh.ai.dto.TranslationResponse;
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+
 import java.io.IOException;
 
 @Slf4j
@@ -41,6 +46,25 @@ public class GoogleColabAIService {
                 throw new IOException("Colab primary failed with code: " + response.code());
             }
             return objectMapper.readValue(response.body().string(), PronunciationResponse.class);
+        }
+    }
+    
+    public TranslationResponse translate(TranslationRequestDto requestDto) throws IOException {
+        RequestBody body = RequestBody.create(
+                objectMapper.writeValueAsString(requestDto),
+                MediaType.parse("application/json; charset=utf-8")
+        );
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(primaryUrl + "/api/v1/ai/translate")
+                .post(body)
+                .build();
+
+        try (okhttp3.Response response = okHttpClient.newCall(request).execute()) {
+            if (!response.isSuccessful() || response.body() == null) {
+                throw new IOException("Colab translation failed with code: " + response.code());
+            }
+            return objectMapper.readValue(response.body().string(), TranslationResponse.class);
         }
     }
 }
