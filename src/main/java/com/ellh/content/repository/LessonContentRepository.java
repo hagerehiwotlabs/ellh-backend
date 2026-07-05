@@ -35,7 +35,14 @@ public interface LessonContentRepository extends MongoRepository<LessonContent, 
     @Query("{ 'lesson_id': ?0 }")
     Optional<LessonContent> findByLessonIdForUpdate(Long lessonId);
 
+    /** 
+     * HIGH PERFORMANCE PROJECTION: 
+     * Only fetches the _id field over the network. Prevents JVM OOM crashes.
+     */
+    @Query(value = "{}", fields = "{ '_id' : 1 }")
+    List<LessonContent> findAllJustIds();
+
     default List<String> findAllIds() {
-        return findAll().stream().map(LessonContent::getId).collect(Collectors.toList());
+        return findAllJustIds().stream().map(LessonContent::getId).collect(Collectors.toList());
     }
 }

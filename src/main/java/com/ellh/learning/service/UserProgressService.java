@@ -78,62 +78,30 @@ public class UserProgressService {
                 user.getId(), languageId, targetProfile.getMasteryPercent());
     }
 
-// Append this method inside your UserProgressService class:
-
-    /**
-     * Dynamically aggregates UserProgress scores by exercise type.
-     * Guarantees all 6 progress bars always receive a valid value (0% default)
-     * to prevent UI rendering errors on new accounts.
-     */
     public List<SkillBreakdownDto> getSkillBreakdown(Long userId) {
-        List<UserProgress> progressList = userProgressRepository.findByUserId(userId);
+        // O(1) Database Query: Let PostgreSQL do the heavy lifting, not the JVM!
+        List<Object[]> aggregatedData = userProgressRepository.getAggregatedSkillBreakdown(userId);
         
-        // Define the 6 core learning skills used by the client layout (Rule 3)
-        String[] skillTypes = {"MULTIPLE_CHOICE", "FILL_BLANK", "LISTENING", "WRITING", "PRONUNCIATION", "TRANSLATION"};
-        
-        Map<String, List<Integer>> scoresMap = new HashMap<>();
-        Map<String, Integer> attemptsMap = new HashMap<>();
+        String[] coreSkills = {"MULTIPLE_CHOICE", "FILL_BLANK", "LISTENING", "WRITING", "PRONUNCIATION", "TRANSLATION"};
+        Map<String, SkillBreakdownDto> dtoMap = new java.util.HashMap<>();
 
-        // Initialize maps with default empty lists/counters
-        for (String type : skillTypes) {
-            scoresMap.put(type, new ArrayList<>());
-            attemptsMap.put(type, 0);
+        // Initialize all skills to 0% to prevent UI rendering bugs on new accounts
+        for (String skill : coreSkills) {
+            dtoMap.put(skill, SkillBreakdownDto.builder().exerciseType(skill).percentage(0.0).attemptCount(0).build());
         }
 
-        // Group the records by their active exercise types
-        for (UserProgress up : progressList) {
-            if (up.getExercise() != null && up.getExercise().getExerciseType() != null) {
-                String type = up.getExercise().getExerciseType().name();
-                if (scoresMap.containsKey(type)) {
-                    if (up.getScore() != null) {
-                        scoresMap.get(type).add(up.getScore());
-                    }
-                    attemptsMap.put(type, attemptsMap.get(type) + up.getAttempts());
-                }
+        // Map the PostgreSQL results directly to the DTOs
+        for (Object[] row : aggregatedData) {
+            String type = ((com.ellh.content.entity.ExerciseType) row[0]).name();
+            double avgScore = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+            int attempts = row[2] != null ? ((Number) row[2]).intValue() : 0;
+
+            if (dtoMap.containsKey(type)) {
+                dtoMap.get(type).setPercentage(avgScore);
+                dtoMap.get(type).setAttemptCount(attempts);
             }
         }
 
-        // Compile results into DTO payloads
-        List<SkillBreakdownDto> dtos = new ArrayList<>();
-        for (String type : skillTypes) {
-            List<Integer> scores = scoresMap.get(type);
-            double average = 0.0;
-            
-            if (!scores.isEmpty()) {
-                double sum = 0;
-                for (int s : scores) {
-                    sum += s;
-                }
-                average = sum / scores.size();
-            }
-            
-            dtos.add(SkillBreakdownDto.builder()
-                    .exerciseType(type)
-                    .percentage(average)
-                    .attemptCount(attemptsMap.get(type))
-                    .build());
-        }
-
-        return dtos;
+        return new java.util.ArrayList<>(dtoMap.values());
     }
 }
