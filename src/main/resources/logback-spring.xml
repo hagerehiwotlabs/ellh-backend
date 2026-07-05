@@ -1,28 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-  <springProfile name="prod">
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-      <encoder>
-        <!-- JSON format for Render.com log aggregation -->
-        <pattern>{"time":"%d{ISO8601}","level":"%-5level","logger":"%logger{36}","msg":"%msg"}%n</pattern>
-      </encoder>
-    </appender>
-    <root level="WARN">
-      <appender-ref ref="STDOUT"/>
-    </root>
-    <logger name="com.ellh" level="INFO"/>
-  </springProfile>
+    <!-- Include Spring Boot's default configurations for colored console outputs -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
-  <springProfile name="dev,test">
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-      <encoder>
-        <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-      </encoder>
-    </appender>
-    <root level="INFO">
-      <appender-ref ref="STDOUT"/>
-    </root>
-    <logger name="com.ellh" level="DEBUG"/>
-    <logger name="org.flywaydb" level="INFO"/>
-  </springProfile>
+    <!-- ======================================================== -->
+    <!-- DEVELOPMENT & TEST PROFILE                               -->
+    <!-- ======================================================== -->
+    <springProfile name="dev,test">
+        <!-- Root Logger uses Spring's standard colored CONSOLE appender -->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+        </root>
+
+        <!-- Mute highly verbose 3rd party frameworks during development -->
+        <logger name="org.mongodb.driver" level="WARN"/>
+        <logger name="org.springframework.data" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="com.zaxxer.hikari" level="WARN"/>
+        <logger name="org.apache.catalina" level="WARN"/>
+        <logger name="org.apache.coyote" level="WARN"/>
+
+        <!-- Keep our actual application package in high-visibility DEBUG mode -->
+        <logger name="com.ellh" level="DEBUG"/>
+        <logger name="org.flywaydb" level="INFO"/>
+    </springProfile>
+
+    <!-- ======================================================== -->
+    <!-- PRODUCTION PROFILE                                       -->
+    <!-- ======================================================== -->
+    <springProfile name="prod">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <!-- Clean JSON format for Render.com log aggregation -->
+                <pattern>{"time":"%d{ISO8601}","level":"%-5level","logger":"%logger{36}","msg":"%msg"}%n</pattern>
+            </encoder>
+        </appender>
+        <root level="WARN">
+            <appender-ref ref="STDOUT"/>
+        </root>
+        <logger name="com.ellh" level="INFO"/>
+    </springProfile>
 </configuration>
