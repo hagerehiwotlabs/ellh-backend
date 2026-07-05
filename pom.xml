@@ -28,7 +28,21 @@
     <okhttp.version>4.12.0</okhttp.version>
     <jacoco.version>0.8.11</jacoco.version>
     <bucket4j.version>8.10.1</bucket4j.version>
+    <aws.sdk.version>2.20.45</aws.sdk.version> <!-- Added AWS SDK version tag -->
   </properties>
+
+  <!-- ── DEPENDENCY MANAGEMENT (S3 BOM - Phase 2) ────────────────── -->
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${aws.sdk.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
 
@@ -92,6 +106,12 @@
     <dependency>
       <groupId>io.lettuce</groupId>
       <artifactId>lettuce-core</artifactId>
+    </dependency>
+
+    <!-- ── CLOUD STORAGE (S3/Supabase - Phase 2) ───────────────────── -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
     </dependency>
 
     <!-- ── VALIDATION ──────────────────────────────────────────────── -->
@@ -185,7 +205,7 @@
       <scope>test</scope>
     </dependency>
 
-      <!-- Sprint 2: SHA-256 hashing for translation cache keys -->
+    <!-- Sprint 2: SHA-256 hashing for translation cache keys -->
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
@@ -245,14 +265,6 @@
         <configuration>
             <skipITs>true</skipITs>
         </configuration>
-     <!--   <executions>
-          <execution>
-            <goals>
-              <goal>integration-test</goal>
-              <goal>verify</goal>
-            </goals>
-          </execution>
-        </executions>   -->
       </plugin>
 
       <!-- JaCoCo — NFR-15: 70% line coverage gate -->
